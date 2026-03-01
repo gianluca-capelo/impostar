@@ -3,6 +3,8 @@
 Guía rápida de fases pendientes. Para el objetivo completo y reglas ver [original-prompt.md](original-prompt.md).
 
 > **REGLA:** NO mirar ni usar como referencia el branch `first-iteration` — ese branch no está bien. Siempre usar el branch actual.
+>
+> **DISEÑO:** La app debe verse moderna y bien hecha. Si no se puede replicar el diseño original exacto, priorizar un diseño actual, de nivel y visualmente atractivo.
 
 ---
 

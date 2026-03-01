@@ -20,6 +20,7 @@ El objetivo es crear un **nuevo proyecto React Native con Expo** en `/Projects/i
 6. **USÁ `npx expo install`** para instalar dependencias de Expo, no `npm install` directo. Esto asegura compatibilidad de versiones.
 8. **NO MIRES EL BRANCH `first-iteration`.** Ese branch no está bien. Usá siempre los archivos del branch actual como referencia.
 7. **PLAN POR FASE.** Antes de ejecutar cada fase, creá un archivo en `migration-plan/` explicando qué vas a hacer. Después ejecutá.
+9. **DISEÑO MODERNO Y CUIDADO.** La app debe verse como una app moderna y bien hecha. Si no es posible replicar exactamente cómo se veía la PWA, priorizá que el diseño sea acorde a la época, de buen nivel y visualmente atractivo. No alcanza con que "funcione" — tiene que verse linda.
 
 ---
 
