@@ -18,6 +18,7 @@ El objetivo es crear un **nuevo proyecto React Native con Expo** en `/Projects/i
 4. **NO COPIES SERVERLESS FUNCTIONS.** La carpeta `api/` se queda en el repo original. La app React Native solo consume la API por URL.
 5. **NO USES SHADCN/UI.** Es web-only. Reescribí los componentes con React Native + NativeWind.
 6. **USÁ `npx expo install`** para instalar dependencias de Expo, no `npm install` directo. Esto asegura compatibilidad de versiones.
+8. **NO MIRES EL BRANCH `first-iteration`.** Ese branch no está bien. Usá siempre los archivos del branch actual como referencia.
 7. **PLAN POR FASE.** Antes de ejecutar cada fase, creá un archivo en `migration-plan/` explicando qué vas a hacer. Después ejecutá.
 
 ---

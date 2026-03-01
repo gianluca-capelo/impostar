@@ -2,6 +2,8 @@
 
 Guía rápida de fases pendientes. Para el objetivo completo y reglas ver [original-prompt.md](original-prompt.md).
 
+> **REGLA:** NO mirar ni usar como referencia el branch `first-iteration` — ese branch no está bien. Siempre usar el branch actual.
+
 ---
 
 ## Estado actual
