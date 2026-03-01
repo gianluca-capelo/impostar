@@ -76,7 +76,7 @@ describe("FaqScreen", () => {
     );
     fireEvent.press(getByText("¿Cómo puedo cancelar mi suscripción?"));
     expect(queryByText(/procesamiento de tu compra/)).toBeTruthy();
-    expect(queryByText(/gestionar tus suscripciones/)).toBeTruthy();
+    expect(queryByText(/Ajustes/)).toBeTruthy();
   });
 
   it("renders contact section text", () => {

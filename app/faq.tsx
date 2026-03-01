@@ -31,7 +31,8 @@ const FAQ_ITEMS = [
   {
     id: "cancelar-suscripcion",
     question: "¿Cómo puedo cancelar mi suscripción?",
-    answer: "Puedes gestionar tus suscripciones en Google Play.",
+    answer:
+      "Podés gestionar tus suscripciones desde la app Ajustes de tu iPhone > tu nombre > Suscripciones, y seleccioná la suscripción que querés cancelar.",
   },
 ];
 
