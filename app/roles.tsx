@@ -7,6 +7,7 @@ import { useGame } from "../context/GameContext";
 import { CATEGORY_OPTIONS } from "../utils/categories";
 
 function getCategoryLabel(categoryValue: string): string {
+  if (categoryValue === "ia_generado") return "🤖 Generado por IA";
   const option = CATEGORY_OPTIONS.find((c) => c.value === categoryValue);
   return option ? `${option.emoji} ${option.label}` : categoryValue;
 }
