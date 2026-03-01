@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,6 +36,14 @@ export default function RolesScreen() {
   const handleNextPlayer = () => {
     setIsRoleVisible(false);
     nextPlayer();
+  };
+
+  const handleNewRoundSameCategory = async () => {
+    try {
+      await startNewRoundSameCategory();
+    } catch {
+      Alert.alert("Error", "No se pudo iniciar la nueva ronda. Intenta de nuevo.");
+    }
   };
 
   const handleNewRound = () => {
@@ -122,7 +130,7 @@ export default function RolesScreen() {
           <View className="gap-3">
             {/* Misma categoría - primary */}
             <Pressable
-              onPress={startNewRoundSameCategory}
+              onPress={handleNewRoundSameCategory}
               className="bg-accent rounded-2xl py-4 flex-row items-center justify-center gap-2"
             >
               <Ionicons name="refresh-outline" size={20} color="#ffffff" />

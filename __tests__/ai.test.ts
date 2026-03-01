@@ -18,11 +18,11 @@ describe("generateWordsFromDescription", () => {
     expect(words).toEqual(["gato", "perro", "pájaro"]);
     expect(mockFetch).toHaveBeenCalledWith(
       "https://impostar.app/api/generate-words",
-      {
+      expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: "animales domésticos" }),
-      }
+      })
     );
   });
 
@@ -35,15 +35,33 @@ describe("generateWordsFromDescription", () => {
     await generateWordsFromDescription("animales", "token-123");
     expect(mockFetch).toHaveBeenCalledWith(
       "https://impostar.app/api/generate-words",
-      {
+      expect.objectContaining({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Purchase-Token": "token-123",
         },
         body: JSON.stringify({ description: "animales" }),
-      }
+      })
     );
+  });
+
+  it("should throw TIMEOUT when fetch is aborted", async () => {
+    const abortError = new Error("The user aborted a request.");
+    abortError.name = "AbortError";
+    mockFetch.mockRejectedValue(abortError);
+
+    await expect(
+      generateWordsFromDescription("animales")
+    ).rejects.toThrow("TIMEOUT");
+  });
+
+  it("should propagate non-abort network errors", async () => {
+    mockFetch.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await expect(
+      generateWordsFromDescription("animales")
+    ).rejects.toThrow("Failed to fetch");
   });
 
   it("should throw SUBSCRIPTION_REQUIRED for subscription errors", async () => {

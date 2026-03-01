@@ -1,5 +1,6 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import RolesScreen from "../app/roles";
 
 // Mock @expo/vector-icons
@@ -49,6 +50,8 @@ jest.mock("../context/GameContext", () => ({
     startNewRoundSameCategory: mockStartNewRoundSameCategory,
   }),
 }));
+
+jest.spyOn(Alert, "alert").mockImplementation(() => {});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -196,12 +199,29 @@ describe("RolesScreen", () => {
       ).toBeTruthy();
     });
 
-    it("calls startNewRoundSameCategory when pressing 'Misma categoría'", () => {
+    it("calls startNewRoundSameCategory when pressing 'Misma categoría'", async () => {
+      mockStartNewRoundSameCategory.mockResolvedValue(undefined);
       const { getByText } = render(<RolesScreen />);
 
-      fireEvent.press(getByText("Misma categoría"));
+      await act(async () => {
+        fireEvent.press(getByText("Misma categoría"));
+      });
 
       expect(mockStartNewRoundSameCategory).toHaveBeenCalledTimes(1);
+    });
+
+    it("C-2: shows alert when startNewRoundSameCategory fails", async () => {
+      mockStartNewRoundSameCategory.mockRejectedValue(new Error("network error"));
+      const { getByText } = render(<RolesScreen />);
+
+      await act(async () => {
+        fireEvent.press(getByText("Misma categoría"));
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Error",
+        "No se pudo iniciar la nueva ronda. Intenta de nuevo."
+      );
     });
 
     it("calls startNewRound and navigates back when pressing 'Nueva ronda'", () => {

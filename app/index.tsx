@@ -48,6 +48,8 @@ export default function GameSetupScreen() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleAiCardPress = () => {
     if (!isPremium) {
@@ -84,6 +86,8 @@ export default function GameSetupScreen() {
   };
 
   const handleStartGame = async () => {
+    if (isStarting) return;
+
     const error = validateGameSetup({
       numberOfPlayers,
       numberOfImpostors,
@@ -101,16 +105,33 @@ export default function GameSetupScreen() {
     const impostors = parseInt(numberOfImpostors);
     const names = useCustomNames ? playerNames : undefined;
 
-    await startGame(players, impostors, names, category, customWord);
-    router.push("/roles");
+    try {
+      setIsStarting(true);
+      await startGame(players, impostors, names, category, customWord);
+      router.push("/roles");
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        err instanceof Error ? err.message : "No se pudo iniciar el juego."
+      );
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const handleReset = async () => {
-    await resetAllData();
-    await clearSetup();
-    setCategory("aleatorio");
-    setCustomWord("");
-    setAiDescription("");
+    if (isResetting) return;
+
+    try {
+      setIsResetting(true);
+      await resetAllData();
+      await clearSetup();
+      setCategory("aleatorio");
+      setCustomWord("");
+      setAiDescription("");
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (!isLoaded) {
@@ -229,15 +250,22 @@ export default function GameSetupScreen() {
             {/* Start Game Button */}
             <Pressable
               onPress={handleStartGame}
+              disabled={isStarting}
               className="bg-accent rounded-2xl py-4 items-center mt-2"
+              style={{ opacity: isStarting ? 0.6 : 1 }}
             >
               <Text className="text-white text-xl font-bold">
-                ¡Comenzar partida!
+                {isStarting ? "Iniciando..." : "¡Comenzar partida!"}
               </Text>
             </Pressable>
 
             {/* Reset Button */}
-            <Pressable onPress={handleReset} className="py-3 items-center">
+            <Pressable
+              onPress={handleReset}
+              disabled={isResetting}
+              className="py-3 items-center"
+              style={{ opacity: isResetting ? 0.6 : 1 }}
+            >
               <View className="flex-row items-center gap-2">
                 <Ionicons
                   name="refresh-outline"

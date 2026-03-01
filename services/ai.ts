@@ -20,11 +20,25 @@ export async function generateWordsFromDescription(
     headers["X-Purchase-Token"] = purchaseToken;
   }
 
-  const response = await fetch("https://impostar.app/api/generate-words", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ description }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+  let response: Response;
+  try {
+    response = await fetch("https://impostar.app/api/generate-words", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ description }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("TIMEOUT");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     let errorData: GenerateWordsError;

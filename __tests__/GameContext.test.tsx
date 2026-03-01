@@ -201,6 +201,32 @@ describe("GameContext", () => {
       // Should still have a fallback word from base categories
       expect(result.current.gameState.secretWord).toBeTruthy();
     });
+
+    it("N-C1: gameState.category should reflect fallback category, not ia_generado", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      // aiGeneratedWords is empty — will trigger fallback
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "ia_generado");
+      });
+
+      // Category must be the actual fallback category used, never "ia_generado"
+      expect(result.current.gameState.category).not.toBe("ia_generado");
+      // And it should be one of the standard base categories
+      const baseCategories = ["comida", "películas", "lugares", "objetos"];
+      expect(baseCategories).toContain(result.current.gameState.category);
+    });
+
+    it("N-C2: startGame should propagate errors from async operations", async () => {
+      mockedWordHistory.addUsedWord.mockRejectedValue(new Error("Storage error"));
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      await expect(
+        act(async () => {
+          await result.current.startGame(4, 1, undefined, "comida");
+        })
+      ).rejects.toThrow("Storage error");
+    });
   });
 
   describe("nextPlayer", () => {
@@ -299,6 +325,24 @@ describe("GameContext", () => {
       expect(result.current.gameState.category).toBe("comida");
       // New word selected (could be same by chance, but history was recorded)
       expect(result.current.gameState.secretWord).toBeTruthy();
+    });
+
+    it("N-C2: startNewRoundSameCategory should propagate errors from async operations", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      // Start a normal game first so gameState has category "comida"
+      await act(async () => {
+        await result.current.startGame(3, 1, undefined, "comida");
+      });
+
+      // Now make addUsedWord fail on the next call
+      mockedWordHistory.addUsedWord.mockRejectedValue(new Error("Storage error"));
+
+      await expect(
+        act(async () => {
+          await result.current.startNewRoundSameCategory();
+        })
+      ).rejects.toThrow("Storage error");
     });
 
     it("should redirect to startNewRound for personalizado category", async () => {

@@ -192,55 +192,63 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ): Promise<void> => {
     setSavedPlayerNames(playerNames);
 
-    // Select secret word
-    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord);
+    try {
+      // Select secret word
+      const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord);
 
-    // Handle case when no AI words are available
-    if (noAiWordsAvailable) {
-      Alert.alert(
-        "Error",
-        "No hay palabras generadas. Usando palabra aleatoria."
-      );
-      const result = await getRandomWordFromAllCategories();
-      const fallbackWord = result.word;
-      const fallbackCategory = result.sourceCategory;
+      // Handle case when no AI words are available
+      if (noAiWordsAvailable) {
+        Alert.alert(
+          "Error",
+          "No hay palabras generadas. Usando palabra aleatoria."
+        );
+        const result = await getRandomWordFromAllCategories();
+        const fallbackWord = result.word;
+        const fallbackCategory = result.sourceCategory;
 
-      // Add fallback word to history
-      if (fallbackWord) {
-        await addUsedWord(fallbackCategory, fallbackWord);
+        // Add fallback word to history
+        if (fallbackWord) {
+          await addUsedWord(fallbackCategory, fallbackWord);
+        }
+
+        const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
+
+        // N-C1: use fallbackCategory so gameState.category reflects the actual word category
+        setGameState({
+          players,
+          numberOfPlayers,
+          numberOfImpostors,
+          secretWord: fallbackWord,
+          category: fallbackCategory,
+          phase: "roles",
+          currentPlayerIndex: 0,
+        });
+        return;
       }
 
+      // Add word to history (except custom words)
+      if (secretWord && category !== "personalizado") {
+        await addUsedWord(categoryForHistory, secretWord);
+      }
+
+      // Create players with roles
       const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
 
       setGameState({
         players,
         numberOfPlayers,
         numberOfImpostors,
-        secretWord: fallbackWord,
+        secretWord,
         category,
         phase: "roles",
         currentPlayerIndex: 0,
       });
-      return;
+    } catch (err) {
+      if (err instanceof Error && err.message === "TIMEOUT") {
+        throw new Error("La generación tardó demasiado. Verifica tu conexión.");
+      }
+      throw err;
     }
-
-    // Add word to history (except custom words)
-    if (secretWord && category !== "personalizado") {
-      await addUsedWord(categoryForHistory, secretWord);
-    }
-
-    // Create players with roles
-    const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
-
-    setGameState({
-      players,
-      numberOfPlayers,
-      numberOfImpostors,
-      secretWord,
-      category,
-      phase: "roles",
-      currentPlayerIndex: 0,
-    });
   };
 
   const nextPlayer = () => {
@@ -288,35 +296,42 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    // Select secret word
-    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category);
+    try {
+      // Select secret word
+      const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category);
 
-    // Handle case when no AI words are available
-    if (noAiWordsAvailable) {
-      Alert.alert(
-        "Error",
-        "No hay palabras generadas. Selecciona otra categoría."
-      );
-      startNewRound();
-      return;
+      // Handle case when no AI words are available
+      if (noAiWordsAvailable) {
+        Alert.alert(
+          "Error",
+          "No hay palabras generadas. Selecciona otra categoría."
+        );
+        startNewRound();
+        return;
+      }
+
+      // Add word to history
+      if (secretWord) {
+        await addUsedWord(categoryForHistory, secretWord);
+      }
+
+      // Preserve names from current players
+      const playerNames = currentPlayers.map((p) => p.name);
+      const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames);
+
+      setGameState((prev) => ({
+        ...prev,
+        players,
+        secretWord,
+        phase: "roles",
+        currentPlayerIndex: 0,
+      }));
+    } catch (err) {
+      if (err instanceof Error && err.message === "TIMEOUT") {
+        throw new Error("La generación tardó demasiado. Verifica tu conexión.");
+      }
+      throw err;
     }
-
-    // Add word to history
-    if (secretWord) {
-      await addUsedWord(categoryForHistory, secretWord);
-    }
-
-    // Preserve names from current players
-    const playerNames = currentPlayers.map((p) => p.name);
-    const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames);
-
-    setGameState((prev) => ({
-      ...prev,
-      players,
-      secretWord,
-      phase: "roles",
-      currentPlayerIndex: 0,
-    }));
   };
 
   const resetAllData = async (): Promise<void> => {
