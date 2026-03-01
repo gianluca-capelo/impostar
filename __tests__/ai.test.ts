@@ -1,4 +1,5 @@
 import { generateWordsFromDescription } from "../services/ai";
+import { API_BASE_URL } from "../config"; // M-2
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -16,8 +17,9 @@ describe("generateWordsFromDescription", () => {
 
     const words = await generateWordsFromDescription("animales domésticos");
     expect(words).toEqual(["gato", "perro", "pájaro"]);
+    // M-2: uses configurable API_BASE_URL
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://impostar.app/api/generate-words",
+      `${API_BASE_URL}/api/generate-words`,
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,7 +36,7 @@ describe("generateWordsFromDescription", () => {
 
     await generateWordsFromDescription("animales", "token-123");
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://impostar.app/api/generate-words",
+      `${API_BASE_URL}/api/generate-words`,
       expect.objectContaining({
         method: "POST",
         headers: {
@@ -46,22 +48,24 @@ describe("generateWordsFromDescription", () => {
     );
   });
 
-  it("should throw TIMEOUT when fetch is aborted", async () => {
+  // M-4: AbortError now produces a user-friendly message instead of the magic "TIMEOUT" string
+  it("M-4: should throw user-friendly message when fetch is aborted by timeout", async () => {
     const abortError = new Error("The user aborted a request.");
     abortError.name = "AbortError";
     mockFetch.mockRejectedValue(abortError);
 
     await expect(
       generateWordsFromDescription("animales")
-    ).rejects.toThrow("TIMEOUT");
+    ).rejects.toThrow("La generación tardó demasiado. Verifica tu conexión.");
   });
 
-  it("should propagate non-abort network errors", async () => {
+  // M-4: network errors (TypeError) produce a user-friendly message
+  it("M-4: should throw user-friendly message for network errors", async () => {
     mockFetch.mockRejectedValue(new TypeError("Failed to fetch"));
 
     await expect(
       generateWordsFromDescription("animales")
-    ).rejects.toThrow("Failed to fetch");
+    ).rejects.toThrow("Sin conexión a internet. Verifica tu conexión.");
   });
 
   it("should throw SUBSCRIPTION_REQUIRED for subscription errors", async () => {
@@ -121,5 +125,72 @@ describe("generateWordsFromDescription", () => {
     await expect(
       generateWordsFromDescription("animales")
     ).rejects.toThrow("Error al generar palabras");
+  });
+
+  // N-M2: runtime validation of response shape
+  it("N-M2: should throw when words is null", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ words: null }),
+    });
+
+    await expect(
+      generateWordsFromDescription("animales")
+    ).rejects.toThrow("Respuesta inválida del servidor");
+  });
+
+  it("N-M2: should throw when words is a string instead of array", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ words: "gato perro" }),
+    });
+
+    await expect(
+      generateWordsFromDescription("animales")
+    ).rejects.toThrow("Respuesta inválida del servidor");
+  });
+
+  it("N-M2: should throw when words field is missing", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
+
+    await expect(
+      generateWordsFromDescription("animales")
+    ).rejects.toThrow("Respuesta inválida del servidor");
+  });
+
+  // N-M1: external abort signal
+  it("N-M1: should throw when called with an already-aborted signal", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      generateWordsFromDescription("animales", undefined, controller.signal)
+    ).rejects.toThrow();
+
+    // fetch should NOT have been called since signal was already aborted
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("N-M1: should abort the fetch when the external signal fires mid-request", async () => {
+    const controller = new AbortController();
+
+    // Simulate fetch that only resolves after we manually abort
+    mockFetch.mockImplementation(() => {
+      return new Promise((_resolve, reject) => {
+        controller.signal.addEventListener("abort", () => {
+          const err = new Error("Aborted");
+          err.name = "AbortError";
+          reject(err);
+        });
+      });
+    });
+
+    const promise = generateWordsFromDescription("animales", undefined, controller.signal);
+    controller.abort();
+
+    await expect(promise).rejects.toThrow("La generación tardó demasiado. Verifica tu conexión.");
   });
 });

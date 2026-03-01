@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import { GameProvider, useGame } from "../context/GameContext";
 import { WORD_LISTS } from "../types/game";
 import * as wordHistoryService from "../services/wordHistory";
+import * as aiWordsService from "../services/aiWords"; // M-1
 
 // Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -16,7 +17,11 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 // Mock wordHistory service so we control what's "used"
 jest.mock("../services/wordHistory");
 
+// M-1: mock aiWords service
+jest.mock("../services/aiWords");
+
 const mockedWordHistory = wordHistoryService as jest.Mocked<typeof wordHistoryService>;
+const mockedAiWords = aiWordsService as jest.Mocked<typeof aiWordsService>;
 
 // Mock Alert.alert
 jest.spyOn(Alert, "alert").mockImplementation(() => {});
@@ -33,6 +38,9 @@ beforeEach(() => {
   );
   mockedWordHistory.addUsedWord.mockResolvedValue(undefined);
   mockedWordHistory.clearAllAppData.mockResolvedValue(undefined);
+  // M-1: default AI words persistence mocks
+  mockedAiWords.loadAiWords.mockResolvedValue([]);
+  mockedAiWords.saveAiWords.mockResolvedValue(undefined);
 });
 
 describe("GameContext", () => {
@@ -375,6 +383,70 @@ describe("GameContext", () => {
         "Historial borrado",
         expect.any(String)
       );
+    });
+  });
+
+  describe("M-1: AI words persistence", () => {
+    it("M-1: should load persisted AI words from storage on mount", async () => {
+      const storedWords = ["gato", "perro", "pájaro"];
+      mockedAiWords.loadAiWords.mockResolvedValue(storedWords);
+
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      // Wait for the useEffect to resolve
+      await act(async () => {});
+
+      expect(mockedAiWords.loadAiWords).toHaveBeenCalled();
+      expect(result.current.aiGeneratedWords).toEqual(storedWords);
+    });
+
+    it("M-1: should persist AI words to storage when setAiGeneratedWords is called", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+      await act(async () => {});
+
+      const newWords = ["manzana", "banana", "naranja"];
+      act(() => {
+        result.current.setAiGeneratedWords(newWords);
+      });
+
+      expect(mockedAiWords.saveAiWords).toHaveBeenCalledWith(newWords);
+      expect(result.current.aiGeneratedWords).toEqual(newWords);
+    });
+
+    it("M-1: resetAllData clears AI words via clearAllAppData", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+      await act(async () => {});
+
+      // Set some AI words first
+      act(() => {
+        result.current.setAiGeneratedWords(["gato", "perro"]);
+      });
+
+      await act(async () => {
+        await result.current.resetAllData();
+      });
+
+      expect(mockedWordHistory.clearAllAppData).toHaveBeenCalled();
+      // AI words should be cleared in memory
+      expect(result.current.aiGeneratedWords).toEqual([]);
+    });
+
+    it("M-1: resetGame clears AI words from memory and persists empty array", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+      await act(async () => {});
+
+      act(() => {
+        result.current.setAiGeneratedWords(["gato", "perro"]);
+      });
+      jest.clearAllMocks();
+      mockedAiWords.saveAiWords.mockResolvedValue(undefined);
+
+      act(() => {
+        result.current.resetGame();
+      });
+
+      expect(mockedAiWords.saveAiWords).toHaveBeenCalledWith([]);
+      expect(result.current.aiGeneratedWords).toEqual([]);
     });
   });
 

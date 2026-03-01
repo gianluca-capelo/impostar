@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Alert } from "react-native";
 import { GameState, Player, WordCategory, WORD_LISTS } from "../types/game";
 import {
@@ -6,6 +6,7 @@ import {
   addUsedWord,
   clearAllAppData,
 } from "../services/wordHistory";
+import { loadAiWords, saveAiWords } from "../services/aiWords"; // M-1
 
 interface GameContextType {
   gameState: GameState;
@@ -45,7 +46,18 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * Used by startGame/assignRoles to recreate players with same names.
    */
   const [savedPlayerNames, setSavedPlayerNames] = useState<string[] | undefined>();
-  const [aiGeneratedWords, setAiGeneratedWords] = useState<string[]>([]);
+  const [aiGeneratedWords, setAiGeneratedWordsState] = useState<string[]>([]);
+
+  // M-1: load persisted AI words on mount
+  useEffect(() => {
+    loadAiWords().then(setAiGeneratedWordsState).catch(console.error);
+  }, []);
+
+  // M-1: wrap setter to also persist to AsyncStorage (fire-and-forget, same interface)
+  const setAiGeneratedWords = (words: string[]) => {
+    setAiGeneratedWordsState(words);
+    saveAiWords(words).catch(console.error);
+  };
 
   const getRandomWord = async (category: WordCategory): Promise<string> => {
     if (category === "personalizado" || category === "aleatorio" || category === "ia_generado") {
@@ -192,63 +204,57 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ): Promise<void> => {
     setSavedPlayerNames(playerNames);
 
-    try {
-      // Select secret word
-      const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord);
+    // Select secret word
+    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord);
 
-      // Handle case when no AI words are available
-      if (noAiWordsAvailable) {
-        Alert.alert(
-          "Error",
-          "No hay palabras generadas. Usando palabra aleatoria."
-        );
-        const result = await getRandomWordFromAllCategories();
-        const fallbackWord = result.word;
-        const fallbackCategory = result.sourceCategory;
+    // Handle case when no AI words are available
+    if (noAiWordsAvailable) {
+      Alert.alert(
+        "Error",
+        "No hay palabras generadas. Usando palabra aleatoria."
+      );
+      const result = await getRandomWordFromAllCategories();
+      const fallbackWord = result.word;
+      const fallbackCategory = result.sourceCategory;
 
-        // Add fallback word to history
-        if (fallbackWord) {
-          await addUsedWord(fallbackCategory, fallbackWord);
-        }
-
-        const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
-
-        // N-C1: use fallbackCategory so gameState.category reflects the actual word category
-        setGameState({
-          players,
-          numberOfPlayers,
-          numberOfImpostors,
-          secretWord: fallbackWord,
-          category: fallbackCategory,
-          phase: "roles",
-          currentPlayerIndex: 0,
-        });
-        return;
+      // Add fallback word to history
+      if (fallbackWord) {
+        await addUsedWord(fallbackCategory, fallbackWord);
       }
 
-      // Add word to history (except custom words)
-      if (secretWord && category !== "personalizado") {
-        await addUsedWord(categoryForHistory, secretWord);
-      }
-
-      // Create players with roles
       const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
 
+      // N-C1: use fallbackCategory so gameState.category reflects the actual word category
       setGameState({
         players,
         numberOfPlayers,
         numberOfImpostors,
-        secretWord,
-        category,
+        secretWord: fallbackWord,
+        category: fallbackCategory,
         phase: "roles",
         currentPlayerIndex: 0,
       });
-    } catch (err) {
-      if (err instanceof Error && err.message === "TIMEOUT") {
-        throw new Error("La generación tardó demasiado. Verifica tu conexión.");
-      }
-      throw err;
+      return;
     }
+
+    // Add word to history (except custom words)
+    if (secretWord && category !== "personalizado") {
+      await addUsedWord(categoryForHistory, secretWord);
+    }
+
+    // Create players with roles
+    const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
+
+    setGameState({
+      players,
+      numberOfPlayers,
+      numberOfImpostors,
+      secretWord,
+      category,
+      phase: "roles",
+      currentPlayerIndex: 0,
+    });
+    // M-4: removed dead "TIMEOUT" re-throw — AI generation doesn't run through startGame
   };
 
   const nextPlayer = () => {
@@ -296,47 +302,41 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    try {
-      // Select secret word
-      const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category);
+    // Select secret word
+    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category);
 
-      // Handle case when no AI words are available
-      if (noAiWordsAvailable) {
-        Alert.alert(
-          "Error",
-          "No hay palabras generadas. Selecciona otra categoría."
-        );
-        startNewRound();
-        return;
-      }
-
-      // Add word to history
-      if (secretWord) {
-        await addUsedWord(categoryForHistory, secretWord);
-      }
-
-      // Preserve names from current players
-      const playerNames = currentPlayers.map((p) => p.name);
-      const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames);
-
-      setGameState((prev) => ({
-        ...prev,
-        players,
-        secretWord,
-        phase: "roles",
-        currentPlayerIndex: 0,
-      }));
-    } catch (err) {
-      if (err instanceof Error && err.message === "TIMEOUT") {
-        throw new Error("La generación tardó demasiado. Verifica tu conexión.");
-      }
-      throw err;
+    // Handle case when no AI words are available
+    if (noAiWordsAvailable) {
+      Alert.alert(
+        "Error",
+        "No hay palabras generadas. Selecciona otra categoría."
+      );
+      startNewRound();
+      return;
     }
+
+    // Add word to history
+    if (secretWord) {
+      await addUsedWord(categoryForHistory, secretWord);
+    }
+
+    // Preserve names from current players
+    const playerNames = currentPlayers.map((p) => p.name);
+    const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames);
+
+    setGameState((prev) => ({
+      ...prev,
+      players,
+      secretWord,
+      phase: "roles",
+      currentPlayerIndex: 0,
+    }));
+    // M-4: removed dead "TIMEOUT" re-throw — AI generation doesn't run through startNewRoundSameCategory
   };
 
   const resetAllData = async (): Promise<void> => {
-    await clearAllAppData();
-    setAiGeneratedWords([]);
+    await clearAllAppData(); // M-1: now also clears AI words key (via wordHistory.clearAllAppData)
+    setAiGeneratedWordsState([]); // use internal setter — no need to re-save empty array after clear
     Alert.alert(
       "Historial borrado",
       "Las palabras ya utilizadas y la configuración se han restablecido."

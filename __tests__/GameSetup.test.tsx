@@ -1,9 +1,10 @@
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import GameSetupScreen from "../app/index";
 import { GameProvider } from "../context/GameContext";
 import * as wordHistoryService from "../services/wordHistory";
+import * as aiService from "../services/ai"; // N-M1
 
 // Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -42,6 +43,23 @@ const mockedWordHistory = wordHistoryService as jest.Mocked<
   typeof wordHistoryService
 >;
 
+// Mock aiWords service (needed because GameContext loads AI words on mount)
+jest.mock("../services/aiWords", () => ({
+  loadAiWords: jest.fn(() => Promise.resolve([])),
+  saveAiWords: jest.fn(() => Promise.resolve()),
+  AI_WORDS_STORAGE_KEY: "impostar-ai-words",
+}));
+
+// N-M1: mock ai service to control in-flight requests
+jest.mock("../services/ai");
+const mockedAi = aiService as jest.Mocked<typeof aiService>;
+
+// Mock useSubscription — default non-premium; override per-test for N-M1
+jest.mock("../hooks/useSubscription", () => ({
+  useSubscription: jest.fn(() => ({ isPremium: false, isLoading: false })),
+}));
+const mockUseSubscription = require("../hooks/useSubscription").useSubscription;
+
 // Mock expo-router
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -61,11 +79,13 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUseSubscription.mockReturnValue({ isPremium: false, isLoading: false });
   mockedWordHistory.getAvailableWords.mockImplementation(
     async (_category: string, allWords: string[]) => allWords
   );
   mockedWordHistory.addUsedWord.mockResolvedValue(undefined);
   mockedWordHistory.clearAllAppData.mockResolvedValue(undefined);
+  mockedAi.generateWordsFromDescription.mockResolvedValue(["gato", "perro"]);
 });
 
 describe("GameSetupScreen", () => {
@@ -240,5 +260,53 @@ describe("GameSetupScreen", () => {
     await waitFor(() => {
       expect(mockedWordHistory.clearAllAppData).toHaveBeenCalled();
     });
+  });
+
+  // N-M1: abort in-flight AI generation when component unmounts
+  it("N-M1: aborts in-flight AI generation when component unmounts", async () => {
+    // Make this test premium so the AI form is accessible
+    mockUseSubscription.mockReturnValue({ isPremium: true, isLoading: false });
+
+    let capturedSignal: AbortSignal | undefined;
+    mockedAi.generateWordsFromDescription.mockImplementation(
+      (_desc, _token, signal) => {
+        capturedSignal = signal;
+        return new Promise(() => {}); // never resolves — simulates in-flight request
+      }
+    );
+
+    const { getByText, getByPlaceholderText, unmount } = renderScreen();
+
+    // Switch to AI category by pressing the card
+    await waitFor(() => {
+      expect(getByText("Generar con IA")).toBeTruthy();
+    });
+    fireEvent.press(getByText("Generar con IA"));
+
+    // AI form should now be visible
+    await waitFor(() => {
+      expect(getByPlaceholderText("Ej: Personajes de anime de los 90s")).toBeTruthy();
+    });
+
+    // Enter a description and trigger generation
+    fireEvent.changeText(
+      getByPlaceholderText("Ej: Personajes de anime de los 90s"),
+      "animales"
+    );
+    fireEvent.press(getByText("Generar palabras"));
+
+    // Wait for signal to be captured (the mock was called)
+    await waitFor(() => {
+      expect(capturedSignal).toBeDefined();
+    });
+
+    expect(capturedSignal!.aborted).toBe(false);
+
+    // Unmount the component — useEffect cleanup should abort the controller
+    act(() => {
+      unmount();
+    });
+
+    expect(capturedSignal!.aborted).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -48,6 +48,11 @@ export default function GameSetupScreen() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  // N-M1: abort in-flight AI generation when the component unmounts
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort(); };
+  }, []);
   const [isStarting, setIsStarting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -64,12 +69,19 @@ export default function GameSetupScreen() {
       Alert.alert("Error", "Escribí una descripción para generar palabras");
       return;
     }
+    // N-M1: abort any previous in-flight request and create a fresh controller
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     try {
-      const words = await generateWordsFromDescription(aiDescription);
+      const words = await generateWordsFromDescription(aiDescription, undefined, controller.signal);
       setAiGeneratedWords(words);
       Alert.alert("¡Listo!", `Se generaron ${words.length} palabras`);
     } catch (error) {
+      // Ignore abort errors triggered by component unmount or new request superseding this one
+      if (error instanceof Error && error.name === "AbortError") return;
       Alert.alert(
         "Error",
         error instanceof Error ? error.message : "Error al generar palabras"
