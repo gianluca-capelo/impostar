@@ -48,13 +48,27 @@ describe("generateWordsFromDescription", () => {
   });
 
   it("should throw user-friendly message when fetch is aborted by timeout", async () => {
-    const abortError = new Error("The user aborted a request.");
-    abortError.name = "AbortError";
-    mockFetch.mockRejectedValue(abortError);
+    jest.useFakeTimers();
 
-    await expect(
-      generateWordsFromDescription("animales")
-    ).rejects.toThrow("La generación tardó demasiado. Verifica tu conexión.");
+    // Simulate a hanging fetch that rejects when its signal is aborted
+    mockFetch.mockImplementation((_url: string, options: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        (options.signal as AbortSignal).addEventListener("abort", () => {
+          const err = new Error("Aborted");
+          err.name = "AbortError";
+          reject(err);
+        });
+      });
+    });
+
+    const promise = generateWordsFromDescription("animales");
+    jest.advanceTimersByTime(30_001);
+
+    await expect(promise).rejects.toThrow(
+      "La generación tardó demasiado. Verifica tu conexión."
+    );
+
+    jest.useRealTimers();
   });
 
   it("should throw user-friendly message for network errors", async () => {
@@ -186,6 +200,6 @@ describe("generateWordsFromDescription", () => {
     const promise = generateWordsFromDescription("animales", undefined, controller.signal);
     controller.abort();
 
-    await expect(promise).rejects.toThrow("La generación tardó demasiado. Verifica tu conexión.");
+    await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });
 });

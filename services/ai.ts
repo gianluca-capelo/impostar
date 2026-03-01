@@ -24,7 +24,11 @@ export async function generateWordsFromDescription(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 30_000);
 
   // Forward external abort signal to our internal controller
   if (signal) {
@@ -47,7 +51,13 @@ export async function generateWordsFromDescription(
     });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("La generación tardó demasiado. Verifica tu conexión.");
+      if (timedOut) {
+        throw new Error("La generación tardó demasiado. Verifica tu conexión.");
+      }
+      // External signal aborted — re-throw as AbortError so the UI can ignore it silently
+      const abortErr = new Error("Aborted");
+      abortErr.name = "AbortError";
+      throw abortErr;
     }
     if (err instanceof TypeError) {
       throw new Error("Sin conexión a internet. Verifica tu conexión.");
