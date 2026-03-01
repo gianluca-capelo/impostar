@@ -103,9 +103,9 @@ export function AiGenerationForm({
 
           {showWords && (
             <View className="flex-row flex-wrap gap-2 mt-3">
-              {generatedWords.map((word, index) => (
+              {generatedWords.map((word) => (
                 <View
-                  key={index}
+                  key={word}
                   className="bg-accent/10 rounded-lg px-2.5 py-1"
                 >
                   <Text className="text-sm text-accent">{word}</Text>

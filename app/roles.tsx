@@ -26,12 +26,10 @@ export default function RolesScreen() {
   const isLastPlayer =
     gameState.currentPlayerIndex === gameState.numberOfPlayers - 1;
 
-  // Reset isRoleVisible when a new round starts (same category)
+  // Reset isRoleVisible when a new round starts (secretWord changes)
   useEffect(() => {
-    if (gameState.currentPlayerIndex === 0 && gameState.phase === "roles") {
-      setIsRoleVisible(false);
-    }
-  }, [gameState.currentPlayerIndex, gameState.phase]);
+    setIsRoleVisible(false);
+  }, [gameState.secretWord]);
 
   const handleNextPlayer = () => {
     setIsRoleVisible(false);

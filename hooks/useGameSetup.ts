@@ -11,6 +11,7 @@ export function useGameSetup() {
   const [setup, setSetup] = useState<GameSetupData>(DEFAULT_SETUP);
   const [isLoaded, setIsLoaded] = useState(false);
   const isLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load persisted setup from AsyncStorage on mount
   useEffect(() => {
@@ -22,11 +23,14 @@ export function useGameSetup() {
     })();
   }, []);
 
-  // Auto-save to AsyncStorage whenever setup changes (only after initial load)
+  // Auto-save to AsyncStorage whenever setup changes (only after initial load, debounced)
   useEffect(() => {
-    if (isLoadedRef.current) {
-      saveSetup(setup);
-    }
+    if (!isLoadedRef.current) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => saveSetup(setup), 300);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
   }, [setup]);
 
   const setNumberOfPlayers = useCallback((value: string) => {

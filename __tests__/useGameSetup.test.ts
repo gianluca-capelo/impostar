@@ -211,10 +211,18 @@ describe("useGameSetup", () => {
   });
 
   describe("auto-save", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it("should persist changes to AsyncStorage after setter calls", async () => {
       const { result } = renderHook(() => useGameSetup());
 
-      await act(async () => {});
+      await act(async () => { await Promise.resolve(); });
 
       // Clear calls from initial load
       mockAsyncStorage.setItem.mockClear();
@@ -223,8 +231,10 @@ describe("useGameSetup", () => {
         result.current.setNumberOfPlayers("7");
       });
 
-      // Wait for useEffect to flush
-      await act(async () => {});
+      // Advance past debounce delay
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
 
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
         "impostar-setup",
@@ -253,6 +263,35 @@ describe("useGameSetup", () => {
       await act(async () => {
         resolveGetItem!(null);
       });
+    });
+
+    it("debounces rapid changes and saves only once after 300ms", async () => {
+      const { result } = renderHook(() => useGameSetup());
+
+      await act(async () => { await Promise.resolve(); });
+
+      // Set up 3 players first
+      act(() => {
+        result.current.setNumberOfPlayers("3");
+      });
+      act(() => { jest.advanceTimersByTime(300); });
+
+      mockAsyncStorage.setItem.mockClear();
+
+      // Three rapid name updates
+      act(() => { result.current.setPlayerName(0, "A"); });
+      act(() => { result.current.setPlayerName(0, "An"); });
+      act(() => { result.current.setPlayerName(0, "Ana"); });
+
+      // Before debounce fires: no writes
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+
+      // After debounce
+      act(() => { jest.advanceTimersByTime(300); });
+
+      expect(mockAsyncStorage.setItem).toHaveBeenCalledTimes(1);
+      const saved = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1] as string);
+      expect(saved.playerNames[0]).toBe("Ana");
     });
   });
 

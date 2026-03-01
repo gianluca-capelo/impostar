@@ -242,4 +242,25 @@ describe("RolesScreen", () => {
       expect(mockBack).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("B-1: role visibility resets on new round", () => {
+    it("hides role again when secretWord changes (new round starts)", () => {
+      mockGameState = {
+        ...mockGameState,
+        phase: "roles" as const,
+        currentPlayerIndex: 0,
+      };
+      const { getByText, rerender } = render(<RolesScreen />);
+
+      fireEvent.press(getByText("Listo, ver mi rol"));
+      expect(getByText("SOS CIVIL")).toBeTruthy();
+
+      act(() => {
+        mockGameState = { ...mockGameState, secretWord: "Hamburguesa", currentPlayerIndex: 0 };
+      });
+      rerender(<RolesScreen />);
+
+      expect(getByText("Listo, ver mi rol")).toBeTruthy();
+    });
+  });
 });

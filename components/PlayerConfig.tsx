@@ -88,7 +88,7 @@ export function PlayerConfig({
           </Text>
           {Array.from({ length: playerCount }).map((_, i) => (
             <TextInput
-              key={i}
+              key={`player-${i}`}
               value={playerNames[i] || ""}
               onChangeText={(text) => onPlayerNameChange(i, text)}
               placeholder={`Jugador ${i + 1}`}
