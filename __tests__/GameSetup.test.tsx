@@ -108,18 +108,42 @@ describe("GameSetupScreen", () => {
     });
   });
 
-  it("shows premium alert when AI card is pressed", async () => {
-    const { getByText } = renderScreen();
+  it("shows premium modal when AI card is pressed", async () => {
+    const { getByText, queryByText } = renderScreen();
     await waitFor(() => {
       expect(getByText("Generar con IA")).toBeTruthy();
     });
 
+    // Modal content should not be visible initially
+    expect(queryByText("Entendido")).toBeNull();
+
     fireEvent.press(getByText("Generar con IA"));
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      "Función Premium",
-      "La generación de palabras con IA estará disponible en una futura actualización."
-    );
+    // Modal content should now be visible
+    await waitFor(() => {
+      expect(getByText("Función Premium")).toBeTruthy();
+      expect(getByText("Entendido")).toBeTruthy();
+    });
+  });
+
+  it("closes premium modal when Entendido is pressed", async () => {
+    const { getByText, queryByText } = renderScreen();
+    await waitFor(() => {
+      expect(getByText("Generar con IA")).toBeTruthy();
+    });
+
+    // Open modal
+    fireEvent.press(getByText("Generar con IA"));
+    await waitFor(() => {
+      expect(getByText("Entendido")).toBeTruthy();
+    });
+
+    // Close modal
+    fireEvent.press(getByText("Entendido"));
+
+    await waitFor(() => {
+      expect(queryByText("Entendido")).toBeNull();
+    });
   });
 
   it("shows the category picker with Aleatorio as default", async () => {
