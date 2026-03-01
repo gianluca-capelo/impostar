@@ -111,7 +111,7 @@ export default function PrivacyScreen() {
               Generación de palabras con IA
             </Text>
             <Text className="text-secondary text-[15px] leading-relaxed">
-              La función de "Categoría personalizada" utiliza un servicio de
+              La función de "Generar con IA" utiliza un servicio de
               inteligencia artificial (Groq) para generar palabras basadas en la
               descripción que escribís. Cuando usás esta función:
             </Text>
@@ -136,14 +136,14 @@ export default function PrivacyScreen() {
               Nombres de jugadores
             </Text>
             <Text className="text-secondary text-[15px] leading-relaxed">
-              Los nombres que ingresás para los jugadores durante una partida se
-              almacenan temporalmente en la memoria de la aplicación mientras
-              dura la sesión de juego.{" "}
+              Los nombres que ingresás para los jugadores se guardan localmente
+              en tu dispositivo (junto con la configuración de la partida) para
+              que no tengas que reingresarlos cada vez.{" "}
               <Text className="text-primary font-bold">
-                Nunca se guardan permanentemente ni se envían a ningún servidor
+                Nunca se envían a ningún servidor externo
               </Text>
-              . Al cerrar la aplicación o iniciar un juego nuevo, estos nombres
-              se eliminan.
+              . Podés eliminarlos en cualquier momento borrando los datos de la
+              aplicación desde la configuración de tu dispositivo.
             </Text>
           </View>
 
