@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SETUP_STORAGE_KEY } from "./gameSetup";
 
 const STORAGE_KEY = "impostar-word-history";
-const SETUP_STORAGE_KEY = "impostar-setup";
 
 export interface WordHistoryData {
   [category: string]: string[];
