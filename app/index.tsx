@@ -112,7 +112,7 @@ export default function GameSetupScreen() {
             {/* Separator */}
             <View className="flex-row items-center py-1">
               <View className="flex-1 h-px bg-border" />
-              <Text className="px-4 text-sm text-secondary">
+              <Text className="px-4 text-[15px] text-secondary">
                 o elegí una categoría
               </Text>
               <View className="flex-1 h-px bg-border" />
@@ -137,7 +137,7 @@ export default function GameSetupScreen() {
                   placeholderTextColor="#94a3b8"
                   className="bg-surface border border-border rounded-xl px-4 py-3 text-primary text-lg"
                 />
-                <Text className="text-sm text-secondary">
+                <Text className="text-[15px] text-secondary">
                   Esta palabra será visible solo para los civiles
                 </Text>
               </View>
@@ -182,7 +182,7 @@ export default function GameSetupScreen() {
                   size={16}
                   color="#94a3b8"
                 />
-                <Text className="text-secondary text-sm">
+                <Text className="text-secondary text-[15px]">
                   Borrar historial de palabras y configuración
                 </Text>
               </View>

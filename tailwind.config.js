@@ -13,7 +13,7 @@ module.exports = {
         surface: "#1a1a2e",
         primary: "#e2e8f0",
         secondary: "#94a3b8",
-        accent: "#7c3aed",
+        accent: "#38bdf8",
         impostor: {
           DEFAULT: "#ef4444",
           light: "#fca5a5",

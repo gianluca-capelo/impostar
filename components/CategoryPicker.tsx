@@ -48,7 +48,7 @@ export function CategoryPicker({
           {item.label}
         </Text>
         {isSelected && (
-          <Ionicons name="checkmark" size={20} color="#7c3aed" />
+          <Ionicons name="checkmark" size={20} color="#38bdf8" />
         )}
       </Pressable>
     );

@@ -18,6 +18,17 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
 }));
 
+// Mock expo-linear-gradient
+jest.mock("expo-linear-gradient", () => ({
+  LinearGradient: "LinearGradient",
+}));
+
+// Mock @react-native-masked-view/masked-view
+jest.mock("@react-native-masked-view/masked-view", () => ({
+  __esModule: true,
+  default: "MaskedView",
+}));
+
 // Mock react-native-safe-area-context
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaView: "SafeAreaView",

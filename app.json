@@ -30,7 +30,8 @@
     },
     "scheme": "impostar",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ]
   }
 }

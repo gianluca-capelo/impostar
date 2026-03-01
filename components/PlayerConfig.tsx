@@ -48,7 +48,7 @@ export function PlayerConfig({
 
         <View className="flex-1 gap-2">
           <View className="flex-row items-center gap-2">
-            <Ionicons name="grid-outline" size={16} color="#7c3aed" />
+            <Ionicons name="grid-outline" size={16} color="#38bdf8" />
             <Text className="text-base text-primary font-medium">
               Impostores
             </Text>
@@ -75,7 +75,7 @@ export function PlayerConfig({
         <Switch
           value={useCustomNames}
           onValueChange={onCustomNamesToggle}
-          trackColor={{ false: "#2d2d44", true: "#7c3aed" }}
+          trackColor={{ false: "#2d2d44", true: "#38bdf8" }}
           thumbColor="#e2e8f0"
         />
       </View>
@@ -83,7 +83,7 @@ export function PlayerConfig({
       {/* Dynamic name inputs */}
       {useCustomNames && (
         <View className="gap-2">
-          <Text className="text-sm text-secondary">
+          <Text className="text-[15px] text-secondary">
             Ingresá el nombre de cada jugador (opcional)
           </Text>
           {Array.from({ length: playerCount }).map((_, i) => (

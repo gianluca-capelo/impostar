@@ -16,21 +16,21 @@ export function AiPremiumCard() {
     >
       <View className="flex-row items-center gap-4">
         <View className="relative">
-          <Ionicons name="sparkles" size={36} color="#c084fc" />
+          <Ionicons name="sparkles" size={36} color="#38bdf8" />
           <View className="absolute -top-1 -right-1">
             <Ionicons name="lock-closed" size={14} color="#facc15" />
           </View>
         </View>
         <View className="flex-1">
           <View className="flex-row items-center gap-2 flex-wrap">
-            <Text className="text-xl font-bold text-purple-400">
+            <Text className="text-xl font-bold text-sky-400">
               Generar con IA
             </Text>
             <View className="bg-yellow-600/30 rounded-full px-2 py-0.5">
               <Text className="text-xs font-bold text-yellow-400">PREMIUM</Text>
             </View>
           </View>
-          <Text className="text-sm text-secondary mt-1">
+          <Text className="text-[15px] text-secondary mt-1">
             Creá categorías únicas con inteligencia artificial
           </Text>
         </View>
