@@ -19,7 +19,7 @@ Guía rápida de fases pendientes. Para el objetivo completo y reglas ver [origi
 | 4 | useGameSetup hook (persistencia) | Pendiente |
 | 5 | GameSetup (pantalla principal de config) | Pendiente |
 | 6 | RoleAssignment (revelación de roles) | Completada |
-| 7 | Settings + FAQ + Privacy | Pendiente |
+| 7 | Settings + FAQ + Privacy | Completada |
 | 8 | PremiumFeatureModal + useSubscription stub | Pendiente |
 | 9 | Integración final + testing | Pendiente |
 

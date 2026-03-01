@@ -91,9 +91,7 @@ export default function GameSetupScreen() {
           {/* Header with settings icon */}
           <View className="flex-row justify-between items-center pt-2">
             <Pressable
-              onPress={() =>
-                Alert.alert("Próximamente", "Configuración disponible en una futura actualización.")
-              }
+              onPress={() => router.push("/settings")}
               className="p-2 -ml-2"
             >
               <Ionicons name="settings-outline" size={22} color="#94a3b8" />
