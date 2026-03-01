@@ -82,8 +82,8 @@ export default function PrivacyScreen() {
               Almacenamiento local
             </Text>
             <Text className="text-secondary text-[15px] leading-relaxed">
-              La aplicación utiliza el almacenamiento local de tu dispositivo
-              (localStorage) para guardar:
+              La aplicación utiliza el almacenamiento del dispositivo para
+              guardar:
             </Text>
             <View className="gap-2 ml-2 mt-3">
               <Text className="text-secondary text-[15px] leading-relaxed">

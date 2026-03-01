@@ -6,7 +6,7 @@ export interface SubscriptionState {
 }
 
 // Flip a true para probar features premium durante desarrollo
-const DEV_PREMIUM = true;
+const DEV_PREMIUM = false;
 
 /**
  * Stub hook for premium subscription status.

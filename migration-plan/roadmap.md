@@ -1,6 +1,6 @@
 # Roadmap de Migración
 
-Guía rápida de fases pendientes. Para el objetivo completo y reglas ver [original-prompt.md](original-prompt.md).
+Guía rápida de fases. Para el objetivo completo y reglas ver [original-prompt.md](original-prompt.md).
 
 > **REGLA:** NO mirar ni usar como referencia el branch `first-iteration` — ese branch no está bien. Siempre usar el branch actual.
 >
@@ -14,14 +14,15 @@ Guía rápida de fases pendientes. Para el objetivo completo y reglas ver [origi
 |------|-------------|--------|
 | 0 | Análisis de la PWA original | Completada |
 | 1 | Scaffolding Expo + NativeWind + Expo Router | Completada |
-| 2 | Types y utilidades puras | Pendiente |
-| 3 | GameContext (lógica de juego) | Pendiente |
-| 4 | useGameSetup hook (persistencia) | Pendiente |
-| 5 | GameSetup (pantalla principal de config) | Pendiente |
+| 2 | Types y utilidades puras | Completada |
+| 3 | GameContext (lógica de juego) | Completada |
+| 4 | useGameSetup hook (persistencia) | Completada |
+| 5 | GameSetup (pantalla principal de config) | Completada |
 | 6 | RoleAssignment (revelación de roles) | Completada |
 | 7 | Settings + FAQ + Privacy | Completada |
-| 8 | PremiumFeatureModal + useSubscription stub | Pendiente |
-| 9 | Integración final + testing | Pendiente |
+| 8 | PremiumFeatureModal + useSubscription stub | Completada |
+| 8bis | Lógica de generación de palabras con IA | Completada |
+| 9 | Integración final + testing | Completada |
 
 ---
 
@@ -70,6 +71,13 @@ Pantallas secundarias.
 Stub para fase 2 futura de suscripciones.
 - `useSubscription` hook (`isPremium = false` siempre)
 - Modal al intentar usar features premium (generación IA)
+
+## Fase 8bis — Lógica de generación de palabras con IA
+
+Integración con la API de Vercel para generar palabras con IA.
+- `services/ai.ts` — cliente para `POST /api/generate-words`
+- `components/AiGenerationForm.tsx` — formulario de generación
+- `components/AiPremiumCard.tsx` — card premium en setup
 
 ## Fase 9 — Integración final
 
