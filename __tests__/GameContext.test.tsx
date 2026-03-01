@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 import { GameProvider, useGame } from "../context/GameContext";
 import { WORD_LISTS } from "../types/game";
 import * as wordHistoryService from "../services/wordHistory";
-import * as aiWordsService from "../services/aiWords"; // M-1
+import * as aiWordsService from "../services/aiWords";
 
 // Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -17,7 +17,6 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 // Mock wordHistory service so we control what's "used"
 jest.mock("../services/wordHistory");
 
-// M-1: mock aiWords service
 jest.mock("../services/aiWords");
 
 const mockedWordHistory = wordHistoryService as jest.Mocked<typeof wordHistoryService>;
@@ -38,7 +37,6 @@ beforeEach(() => {
   );
   mockedWordHistory.addUsedWord.mockResolvedValue(undefined);
   mockedWordHistory.clearAllAppData.mockResolvedValue(undefined);
-  // M-1: default AI words persistence mocks
   mockedAiWords.loadAiWords.mockResolvedValue([]);
   mockedAiWords.saveAiWords.mockResolvedValue(undefined);
 });
@@ -386,8 +384,8 @@ describe("GameContext", () => {
     });
   });
 
-  describe("M-1: AI words persistence", () => {
-    it("M-1: should load persisted AI words from storage on mount", async () => {
+  describe("AI words persistence", () => {
+    it("should load persisted AI words from storage on mount", async () => {
       const storedWords = ["gato", "perro", "pájaro"];
       mockedAiWords.loadAiWords.mockResolvedValue(storedWords);
 
@@ -400,7 +398,7 @@ describe("GameContext", () => {
       expect(result.current.aiGeneratedWords).toEqual(storedWords);
     });
 
-    it("M-1: should persist AI words to storage when setAiGeneratedWords is called", async () => {
+    it("should persist AI words to storage when setAiGeneratedWords is called", async () => {
       const { result } = renderHook(() => useGame(), { wrapper });
       await act(async () => {});
 
@@ -413,7 +411,7 @@ describe("GameContext", () => {
       expect(result.current.aiGeneratedWords).toEqual(newWords);
     });
 
-    it("M-1: resetAllData clears AI words via clearAllAppData", async () => {
+    it("resetAllData clears AI words via clearAllAppData", async () => {
       const { result } = renderHook(() => useGame(), { wrapper });
       await act(async () => {});
 
@@ -431,7 +429,7 @@ describe("GameContext", () => {
       expect(result.current.aiGeneratedWords).toEqual([]);
     });
 
-    it("M-1: resetGame clears AI words from memory and persists empty array", async () => {
+    it("resetGame clears AI words from memory and persists empty array", async () => {
       const { result } = renderHook(() => useGame(), { wrapper });
       await act(async () => {});
 

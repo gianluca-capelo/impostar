@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SETUP_STORAGE_KEY } from "./gameSetup";
-import { AI_WORDS_STORAGE_KEY } from "./aiWords"; // M-1
+import { AI_WORDS_STORAGE_KEY } from "./aiWords";
 
 const STORAGE_KEY = "impostar-word-history";
 
@@ -64,5 +64,5 @@ export async function clearCategoryHistory(category: string): Promise<void> {
 }
 
 export async function clearAllAppData(): Promise<void> {
-  await AsyncStorage.multiRemove([STORAGE_KEY, SETUP_STORAGE_KEY, AI_WORDS_STORAGE_KEY]); // M-1
+  await AsyncStorage.multiRemove([STORAGE_KEY, SETUP_STORAGE_KEY, AI_WORDS_STORAGE_KEY]);
 }

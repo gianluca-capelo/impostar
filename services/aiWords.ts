@@ -1,4 +1,3 @@
-// M-1: Persistence of AI-generated words across app restarts.
 // Follows the same pattern as services/wordHistory.ts.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

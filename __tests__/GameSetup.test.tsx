@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 import GameSetupScreen from "../app/index";
 import { GameProvider } from "../context/GameContext";
 import * as wordHistoryService from "../services/wordHistory";
-import * as aiService from "../services/ai"; // N-M1
+import * as aiService from "../services/ai";
 
 // Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -50,7 +50,6 @@ jest.mock("../services/aiWords", () => ({
   AI_WORDS_STORAGE_KEY: "impostar-ai-words",
 }));
 
-// N-M1: mock ai service to control in-flight requests
 jest.mock("../services/ai");
 const mockedAi = aiService as jest.Mocked<typeof aiService>;
 
@@ -262,8 +261,7 @@ describe("GameSetupScreen", () => {
     });
   });
 
-  // N-M1: abort in-flight AI generation when component unmounts
-  it("N-M1: aborts in-flight AI generation when component unmounts", async () => {
+  it("aborts in-flight AI generation when component unmounts", async () => {
     // Make this test premium so the AI form is accessible
     mockUseSubscription.mockReturnValue({ isPremium: true, isLoading: false });
 

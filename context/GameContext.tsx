@@ -6,7 +6,7 @@ import {
   addUsedWord,
   clearAllAppData,
 } from "../services/wordHistory";
-import { loadAiWords, saveAiWords } from "../services/aiWords"; // M-1
+import { loadAiWords, saveAiWords } from "../services/aiWords";
 
 interface GameContextType {
   gameState: GameState;
@@ -48,12 +48,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [savedPlayerNames, setSavedPlayerNames] = useState<string[] | undefined>();
   const [aiGeneratedWords, setAiGeneratedWordsState] = useState<string[]>([]);
 
-  // M-1: load persisted AI words on mount
+  // Load persisted AI words on mount
   useEffect(() => {
     loadAiWords().then(setAiGeneratedWordsState).catch(console.error);
   }, []);
 
-  // M-1: wrap setter to also persist to AsyncStorage (fire-and-forget, same interface)
   const setAiGeneratedWords = (words: string[]) => {
     setAiGeneratedWordsState(words);
     saveAiWords(words).catch(console.error);
@@ -224,7 +223,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const players = assignRoles(numberOfPlayers, numberOfImpostors, playerNames || []);
 
-      // N-C1: use fallbackCategory so gameState.category reflects the actual word category
       setGameState({
         players,
         numberOfPlayers,
@@ -254,7 +252,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       phase: "roles",
       currentPlayerIndex: 0,
     });
-    // M-4: removed dead "TIMEOUT" re-throw — AI generation doesn't run through startGame
   };
 
   const nextPlayer = () => {
@@ -331,11 +328,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       phase: "roles",
       currentPlayerIndex: 0,
     }));
-    // M-4: removed dead "TIMEOUT" re-throw — AI generation doesn't run through startNewRoundSameCategory
   };
 
   const resetAllData = async (): Promise<void> => {
-    await clearAllAppData(); // M-1: now also clears AI words key (via wordHistory.clearAllAppData)
+    await clearAllAppData();
     setAiGeneratedWordsState([]); // use internal setter — no need to re-save empty array after clear
     Alert.alert(
       "Historial borrado",

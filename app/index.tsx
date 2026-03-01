@@ -48,7 +48,7 @@ export default function GameSetupScreen() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  // N-M1: abort in-flight AI generation when the component unmounts
+  // Abort in-flight AI generation when the component unmounts
   const abortControllerRef = useRef<AbortController | null>(null);
   useEffect(() => {
     return () => { abortControllerRef.current?.abort(); };
@@ -69,7 +69,7 @@ export default function GameSetupScreen() {
       Alert.alert("Error", "Escribí una descripción para generar palabras");
       return;
     }
-    // N-M1: abort any previous in-flight request and create a fresh controller
+    // Abort any previous in-flight request and create a fresh controller
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;

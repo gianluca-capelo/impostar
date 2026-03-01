@@ -161,7 +161,6 @@ describe("clearCategoryHistory", () => {
 describe("clearAllAppData", () => {
   it("should remove word history, setup, and AI words keys", async () => {
     await clearAllAppData();
-    // M-1: AI_WORDS_STORAGE_KEY is now also cleared
     expect(AsyncStorage.multiRemove).toHaveBeenCalledWith([
       "impostar-word-history",
       "impostar-setup",

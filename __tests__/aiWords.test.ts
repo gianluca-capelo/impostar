@@ -1,4 +1,3 @@
-// M-1: tests for AI words persistence service
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadAiWords, saveAiWords, AI_WORDS_STORAGE_KEY } from "../services/aiWords";
 
@@ -15,21 +14,21 @@ beforeEach(() => {
 
 describe("aiWords", () => {
   describe("loadAiWords", () => {
-    it("M-1: returns [] when AsyncStorage is empty", async () => {
+    it("returns [] when AsyncStorage is empty", async () => {
       mockedStorage.getItem.mockResolvedValue(null);
       const words = await loadAiWords();
       expect(words).toEqual([]);
       expect(mockedStorage.getItem).toHaveBeenCalledWith(AI_WORDS_STORAGE_KEY);
     });
 
-    it("M-1: returns stored words when data exists", async () => {
+    it("returns stored words when data exists", async () => {
       const stored = ["gato", "perro", "pájaro"];
       mockedStorage.getItem.mockResolvedValue(JSON.stringify(stored));
       const words = await loadAiWords();
       expect(words).toEqual(stored);
     });
 
-    it("M-1: returns [] on read error (resilient to storage failure)", async () => {
+    it("returns [] on read error (resilient to storage failure)", async () => {
       mockedStorage.getItem.mockRejectedValue(new Error("storage error"));
       const words = await loadAiWords();
       expect(words).toEqual([]);
@@ -37,7 +36,7 @@ describe("aiWords", () => {
   });
 
   describe("saveAiWords", () => {
-    it("M-1: persists words to AsyncStorage", async () => {
+    it("persists words to AsyncStorage", async () => {
       mockedStorage.setItem.mockResolvedValue();
       await saveAiWords(["gato", "perro"]);
       expect(mockedStorage.setItem).toHaveBeenCalledWith(
@@ -46,7 +45,7 @@ describe("aiWords", () => {
       );
     });
 
-    it("M-1: persists empty array when clearing words", async () => {
+    it("persists empty array when clearing words", async () => {
       mockedStorage.setItem.mockResolvedValue();
       await saveAiWords([]);
       expect(mockedStorage.setItem).toHaveBeenCalledWith(
