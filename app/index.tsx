@@ -1,10 +1,195 @@
-import { View, Text } from "react-native";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useGame } from "../context/GameContext";
+import { useGameSetup } from "../hooks/useGameSetup";
+import { WordCategory } from "../types/game";
+import { validateGameSetup } from "../utils/validation";
+import { GameTitle } from "../components/GameTitle";
+import { AiPremiumCard } from "../components/AiPremiumCard";
+import { CategoryPicker } from "../components/CategoryPicker";
+import { PlayerConfig } from "../components/PlayerConfig";
 
-export default function HomeScreen() {
+export default function GameSetupScreen() {
+  const router = useRouter();
+  const { aiGeneratedWords, startGame, resetAllData } = useGame();
+  const {
+    numberOfPlayers,
+    numberOfImpostors,
+    useCustomNames,
+    playerNames,
+    isLoaded,
+    setNumberOfPlayers,
+    setNumberOfImpostors,
+    setUseCustomNames,
+    setPlayerName,
+    clearSetup,
+  } = useGameSetup();
+
+  const [category, setCategory] = useState<WordCategory>("aleatorio");
+  const [customWord, setCustomWord] = useState("");
+
+  const handleStartGame = async () => {
+    const error = validateGameSetup({
+      numberOfPlayers,
+      numberOfImpostors,
+      category,
+      customWord,
+      aiGeneratedWordsCount: aiGeneratedWords.length,
+    });
+
+    if (error) {
+      Alert.alert("Error", error);
+      return;
+    }
+
+    const players = parseInt(numberOfPlayers);
+    const impostors = parseInt(numberOfImpostors);
+    const names = useCustomNames ? playerNames : undefined;
+
+    await startGame(players, impostors, names, category, customWord);
+    router.push("/roles");
+  };
+
+  const handleReset = async () => {
+    await resetAllData();
+    await clearSetup();
+    setCategory("aleatorio");
+    setCustomWord("");
+  };
+
+  if (!isLoaded) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+        <Text className="text-secondary">Cargando...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#0a0a0a", alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ color: "#e2e8f0", fontSize: 24, fontWeight: "bold" }}>Impostar</Text>
-      <Text style={{ color: "#94a3b8", marginTop: 8 }}>Scaffolding OK</Text>
-    </View>
+    <SafeAreaView className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-5 pb-10"
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header with settings icon */}
+          <View className="flex-row justify-between items-center pt-2">
+            <Pressable
+              onPress={() =>
+                Alert.alert("Próximamente", "Configuración disponible en una futura actualización.")
+              }
+              className="p-2 -ml-2"
+            >
+              <Ionicons name="settings-outline" size={22} color="#94a3b8" />
+            </Pressable>
+            <View />
+          </View>
+
+          {/* Title */}
+          <GameTitle />
+
+          {/* Content */}
+          <View className="gap-6 mt-2">
+            {/* AI Premium Card */}
+            <AiPremiumCard />
+
+            {/* Separator */}
+            <View className="flex-row items-center py-1">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="px-4 text-sm text-secondary">
+                o elegí una categoría
+              </Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
+
+            {/* Category Picker */}
+            <CategoryPicker
+              selectedCategory={category}
+              onSelectCategory={setCategory}
+            />
+
+            {/* Custom word input */}
+            {category === "personalizado" && (
+              <View className="gap-2">
+                <Text className="text-base text-primary font-medium">
+                  Palabra secreta
+                </Text>
+                <TextInput
+                  value={customWord}
+                  onChangeText={setCustomWord}
+                  placeholder="Escribí la palabra secreta acá"
+                  placeholderTextColor="#94a3b8"
+                  className="bg-surface border border-border rounded-xl px-4 py-3 text-primary text-lg"
+                />
+                <Text className="text-sm text-secondary">
+                  Esta palabra será visible solo para los civiles
+                </Text>
+              </View>
+            )}
+
+            {/* Player config separator */}
+            <View className="flex-row items-center py-2">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="px-4 text-xs text-secondary font-medium uppercase tracking-wider">
+                configuración de jugadores
+              </Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
+
+            {/* Player Configuration */}
+            <PlayerConfig
+              numberOfPlayers={numberOfPlayers}
+              numberOfImpostors={numberOfImpostors}
+              useCustomNames={useCustomNames}
+              playerNames={playerNames}
+              onPlayersChange={setNumberOfPlayers}
+              onImpostorsChange={setNumberOfImpostors}
+              onCustomNamesToggle={setUseCustomNames}
+              onPlayerNameChange={setPlayerName}
+            />
+
+            {/* Start Game Button */}
+            <Pressable
+              onPress={handleStartGame}
+              className="bg-accent rounded-2xl py-4 items-center mt-2"
+            >
+              <Text className="text-white text-xl font-bold">
+                ¡Comenzar partida!
+              </Text>
+            </Pressable>
+
+            {/* Reset Button */}
+            <Pressable onPress={handleReset} className="py-3 items-center">
+              <View className="flex-row items-center gap-2">
+                <Ionicons
+                  name="refresh-outline"
+                  size={16}
+                  color="#94a3b8"
+                />
+                <Text className="text-secondary text-sm">
+                  Borrar historial de palabras y configuración
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
