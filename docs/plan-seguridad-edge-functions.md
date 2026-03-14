@@ -1,5 +1,7 @@
 # Plan de seguridad: Edge Functions y autenticación
 
+> **Guía de referencia**: La [documentación oficial de Supabase Auth con Expo React Native](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth?queryGroups=auth-store&auth-store=async-storage) debe usarse como guía para la implementación de autenticación en el cliente (inicialización del cliente, storage adapters, flujo de social auth).
+
 ## 1. Plan de implementación
 
 ### Fase 1 — Anonymous Auth + verificación JWT manual
@@ -91,90 +93,56 @@ Estos se aplican automáticamente al usar Anonymous Auth:
 
 Todos los rate limits de Auth son configurables desde el dashboard en **Authentication > Rate Limits**.
 
-#### 2.1 Opción A: Rate limiting en memoria (simple, sin dependencias externas)
-
-Usar un `Map` en memoria dentro de la Edge Function. Limitación: se resetea al redeployar o si Supabase recicla la instancia. Suficiente como primera capa para el lanzamiento.
-
-```typescript
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-const MAX_REQUESTS = 10;
-const WINDOW_MS = 60_000; // 1 minuto
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(userId);
-  if (!entry || now > entry.resetAt) {
-    rateLimits.set(userId, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= MAX_REQUESTS) return false;
-  entry.count++;
-  return true;
-}
-```
-
-#### 2.2 Opción B: Rate limiting con Upstash Redis (persistente, recomendado por Supabase para producción)
+#### 2.1 Rate limiting con Upstash Redis
 
 Upstash Redis es la **única solución de rate limiting recomendada oficialmente** por Supabase para Edge Functions. Usa un cliente HTTP/REST ideal para entornos serverless. Free tier: 10,000 requests/día.
 
-Este es el ejemplo oficial del repositorio de Supabase ([source](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/upstash-redis-ratelimit)):
+> **¿Por qué no un `Map` en memoria?** Las Edge Functions corren en isolates de Deno Deploy que son **stateless**: múltiples isolates corren en paralelo (cada uno con su propio estado), se destruyen sin aviso, y no comparten memoria entre regiones. Un `Map` en module scope puede sobrevivir entre requests en un isolate "warm", pero no se puede confiar en ello. En la práctica, el rate limiting en memoria es trivialmente evadible y da falsa confianza (funciona perfecto en dev local con `supabase functions serve` pero falla en producción).
+
+Ejemplo basado en el [repositorio oficial de Supabase](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/upstash-redis-ratelimit), adaptado para usar `getClaims()` (más eficiente que `getUser()` porque valida el JWT localmente sin round-trip al servidor de Auth):
 
 ```typescript
 import { Redis } from "https://deno.land/x/upstash_redis@v1.19.3/mod.ts";
 import { Ratelimit } from "https://cdn.skypack.dev/@upstash/ratelimit@0.4.4";
-import { createClient } from "npm:supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-Deno.serve(async (req) => {
-  try {
-    // Crear cliente Supabase con el contexto Auth del usuario que llamó la función
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
+const supabaseAuth = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SB_PUBLISHABLE_KEY")!
+);
 
-    // Obtener el usuario autenticado
-    const token = req.headers.get("Authorization").replace("Bearer ", "");
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser(token);
-    if (!user) throw new Error("no user");
-
-    // Configurar Upstash Redis
-    const redis = new Redis({
-      url: Deno.env.get("UPSTASH_REDIS_REST_URL")!,
-      token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")!,
-    });
-
-    // Sliding window: 2 requests cada 10 segundos por usuario
-    const ratelimit = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(2, "10 s"),
-      analytics: true,
-    });
-
-    // Identificar por user.id (también se puede usar IP o API key)
-    const identifier = user.id;
-    const { success } = await ratelimit.limit(identifier);
-
-    if (!success) {
-      throw new Error("limit exceeded");
-    }
-
-    return new Response(JSON.stringify({ success }), { status: 200 });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 200,
-    });
-  }
+const redis = new Redis({
+  url: Deno.env.get("UPSTASH_REDIS_REST_URL")!,
+  token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")!,
 });
+
+// Sliding window: 10 requests por minuto por usuario
+const ratelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "60 s"),
+  analytics: true,
+});
+
+// Dentro de Deno.serve, antes de procesar el request:
+const authHeader = req.headers.get("Authorization");
+if (!authHeader) {
+  return jsonResponse({ error: "No autorizado" }, 401);
+}
+
+const token = authHeader.replace("Bearer ", "");
+const { data, error } = await supabaseAuth.auth.getClaims(token);
+if (error || !data?.claims?.sub) {
+  return jsonResponse({ error: "Token inválido" }, 401);
+}
+
+const userId = data.claims.sub;
+const { success } = await ratelimit.limit(userId);
+if (!success) {
+  return jsonResponse({ error: "Demasiadas solicitudes" }, 429);
+}
 ```
 
-**Secrets necesarios para Upstash**:
+**Secrets necesarios**:
 ```bash
 supabase secrets set UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
 supabase secrets set UPSTASH_REDIS_REST_TOKEN=AXxxxxxxxxxxxx
@@ -182,13 +150,13 @@ supabase secrets set UPSTASH_REDIS_REST_TOKEN=AXxxxxxxxxxxxx
 
 #### Recomendación para Impostar
 
-Para el lanzamiento, **Anonymous Auth + rate limiting en memoria (Opción A) es suficiente**. Las 3 capas de protección combinadas son:
+**Anonymous Auth + Upstash Redis** desde el lanzamiento. Las 3 capas de protección combinadas son:
 
 1. **Supabase Auth nativo**: 30 anonymous sign-ins/hora por IP (automático)
 2. **JWT verification**: `getClaims()` bloquea requests sin sesión válida
-3. **Rate limiting en memoria**: 10 req/min por usuario autenticado
+3. **Rate limiting persistente (Upstash)**: 10 req/min por usuario autenticado
 
-Si después se detecta abuso real, migrar a **Upstash Redis (Opción B)** para rate limiting persistente. El cambio es mínimo: reemplazar el `Map` por el cliente de Upstash.
+Upstash free tier (10,000 req/día) es más que suficiente para el volumen esperado de Impostar.
 
 #### 2.3 CORS headers
 
@@ -222,7 +190,7 @@ if (req.method === "OPTIONS") {
 |------|-----------|------|
 | Anonymous Auth | Bloquea requests sin sesión válida | `signInAnonymously()` en el cliente + `getClaims()` en la función |
 | Rate limit de Supabase Auth | Limita creación de sesiones anónimas | 30 sign-ins por hora por IP (built-in de Supabase) |
-| Rate limiting por user ID | Limita requests por usuario autenticado | 10 req/min por usuario (en-memoria o Upstash Redis) |
+| Rate limiting por user ID | Limita requests por usuario autenticado | 10 req/min por usuario (Upstash Redis) |
 | CAPTCHA (opcional) | Bloquea bots que crean sesiones masivas | Cloudflare Turnstile en `signInAnonymously()` |
 
 **Resultado**: Un atacante ya no puede simplemente extraer el anon key y hacer requests ilimitados. Necesitaría:
@@ -230,7 +198,7 @@ if (req.method === "OPTIONS") {
 2. Cada sesión solo puede hacer 10 requests por minuto
 3. Costo máximo estimado por IP por hora: 30 usuarios × 10 req/min × 60 min = 18,000 requests — pero en la práctica el rate limit por usuario lo limita a ~600 req/hora por IP (30 sesiones × ~20 req antes de crear otra sesión)
 
-Comparado con el estado actual (~5000 req/min sin límite = ~300,000 req/hora), es una reducción de ~99.8%.
+Con Upstash Redis el rate limiting es **persistente y compartido entre todas las instancias**, eliminando la posibilidad de evasión por cambio de isolate. Comparado con el estado actual (~5000 req/min sin límite = ~300,000 req/hora), es una reducción de ~99.8%.
 
 ### Pendiente 2: Publishable keys no soportan JWT en Edge Functions
 
@@ -287,3 +255,4 @@ const maxRequests = isAnonymous ? 10 : 30; // Más generoso para usuarios verifi
 - [ ] Para usuarios existentes anónimos: `supabase.auth.linkIdentity({ provider: 'apple' })`
 - [ ] UI de onboarding/login
 - [ ] Manejar el caso de usuarios que rechazan el login (fallback a Anonymous Auth)
+
