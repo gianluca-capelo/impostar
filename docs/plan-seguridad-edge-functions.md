@@ -2,18 +2,16 @@
 
 > **Guía de referencia**: La [documentación oficial de Supabase Auth con Expo React Native](https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth?queryGroups=auth-store&auth-store=async-storage) debe usarse como guía para la implementación de autenticación en el cliente (inicialización del cliente, storage adapters, flujo de social auth).
 
-## 1. Plan de implementación
-
-### Fase 1 — Anonymous Auth + verificación JWT manual
+## 1. Implementación actual — Anonymous Auth + verificación JWT manual
 
 **Objetivo**: Proteger la Edge Function `generate-words` para que solo usuarios legítimos de la app puedan invocarla, sin requerir login ni datos personales.
 
-#### 1.1 Activar Anonymous Auth en Supabase Dashboard
+### 1.1 Activar Anonymous Auth en Supabase Dashboard
 
 - Ir a **Authentication > Settings > Anonymous Sign-ins** y activarlo
 - Opcionalmente activar CAPTCHA (Cloudflare Turnstile) en **Auth > Bot and Abuse Protection**
 
-#### 1.2 Iniciar sesión anónima en el cliente
+### 1.2 Iniciar sesión anónima en el cliente
 
 En `lib/supabase.ts` o en un nuevo archivo `lib/auth.ts`, crear una función que inicie sesión anónima si no hay sesión activa:
 
@@ -33,7 +31,7 @@ export async function ensureAuthenticated(): Promise<void> {
 
 Llamar `ensureAuthenticated()` al montar la app, idealmente en `_layout.tsx` o en `GameProvider`. La sesión se persiste automáticamente en AsyncStorage (ya configurado), por lo que solo se llama una vez por instalación.
 
-#### 1.3 Verificar JWT en la Edge Function
+### 1.3 Verificar JWT en la Edge Function
 
 Modificar `supabase/functions/generate-words/index.ts` para verificar el JWT manualmente usando `getClaims()`, siguiendo el patrón recomendado en la [documentación oficial](https://supabase.com/docs/guides/functions/auth):
 
@@ -60,13 +58,13 @@ if (error || !data?.claims?.sub) {
 const userId = data.claims.sub; // UUID del usuario anónimo
 ```
 
-#### 1.4 Exponer la publishable key como secret
+### 1.4 Exponer la publishable key como secret
 
 ```bash
 supabase secrets set SB_PUBLISHABLE_KEY=sb_publishable_kL_XoTHX8QIRXcALqQPtGg_t5n0Vd0O
 ```
 
-#### 1.5 Deployar con `--no-verify-jwt`
+### 1.5 Deployar con `--no-verify-jwt`
 
 Dado que la verificación ahora es manual dentro de la función (como recomienda la documentación oficial para publishable keys), deployar con:
 
@@ -76,11 +74,39 @@ supabase functions deploy generate-words --no-verify-jwt
 
 Esto no significa que la función quede desprotegida — la verificación con `getClaims()` reemplaza la verificación automática del gateway.
 
-### Fase 2 — Rate limiting por usuario
+### Protección que se obtiene con esta fase
+
+Con solo Anonymous Auth + JWT verification, la protección es:
+
+| Capa | Protección | Cómo |
+|------|-----------|------|
+| Anonymous Auth | Bloquea requests sin sesión válida | `signInAnonymously()` en el cliente + `getClaims()` en la función |
+| Rate limit de Supabase Auth | Limita creación de sesiones anónimas | 30 sign-ins por hora por IP (built-in de Supabase) |
+| CAPTCHA (opcional) | Bloquea bots que crean sesiones masivas | Cloudflare Turnstile en `signInAnonymously()` |
+
+**Resultado**: Un atacante ya no puede simplemente extraer el anon key y hacer requests ilimitados. Necesitaría crear una sesión anónima válida (limitado a 30/hora por IP por los rate limits nativos de Supabase Auth).
+
+### Pendiente resuelto: Publishable keys no soportan JWT en Edge Functions
+
+> **Problema**: Las publishable keys no funcionan con la verificación JWT por defecto. Hay que deployar con `--no-verify-jwt` o implementar verificación custom.
+
+**Resolución**: Se implementa verificación manual con `getClaims()` dentro de la función, que es exactamente lo que la [documentación oficial recomienda](https://supabase.com/docs/guides/functions/auth) para publishable keys. Se deploya con `--no-verify-jwt` porque la verificación ahora vive dentro del código de la función, no en el gateway.
+
+Esto es **más seguro** que la verificación del gateway porque:
+- Permite inspeccionar claims específicos (ej: `is_anonymous`)
+- Permite aplicar lógica de autorización customizada
+- Permite extraer el `user.id` para rate limiting futuro
+- Es compatible con las JWT Signing Keys asimétricas nuevas de Supabase
+
+---
+
+## 2. Futuro: Rate limiting por usuario (Upstash Redis)
 
 > **Nota importante**: Supabase **no tiene rate limiting nativo para Edge Functions**. Los rate limits nativos de la plataforma solo cubren endpoints de Auth (signup, OTP, token refresh, anonymous sign-ins, etc.), no funciones custom. Para rate limiting en Edge Functions, Supabase recomienda oficialmente usar **Upstash Redis**. Ref: [supabase.com/docs/guides/functions/examples/rate-limiting](https://supabase.com/docs/guides/functions/examples/rate-limiting)
 
-#### Rate limits nativos de Supabase Auth (ya incluidos, no requieren implementación)
+> **Alternativa a explorar**: Evaluar si se puede implementar rate limiting con una tabla en Supabase (ej: `rate_limits` con `user_id`, `count`, `window_start`) en vez de Upstash Redis. Sería más lento (round-trip a Postgres por cada request) pero evita agregar un servicio externo y mantiene todo dentro del ecosistema de Supabase. Para el volumen esperado de Impostar, la latencia extra podría ser aceptable.
+
+### Rate limits nativos de Supabase Auth (ya incluidos con la Fase 1, no requieren implementación)
 
 Estos se aplican automáticamente al usar Anonymous Auth:
 
@@ -93,7 +119,7 @@ Estos se aplican automáticamente al usar Anonymous Auth:
 
 Todos los rate limits de Auth son configurables desde el dashboard en **Authentication > Rate Limits**.
 
-#### 2.1 Rate limiting con Upstash Redis
+### Rate limiting con Upstash Redis
 
 Upstash Redis es la **única solución de rate limiting recomendada oficialmente** por Supabase para Edge Functions. Usa un cliente HTTP/REST ideal para entornos serverless. Free tier: 10,000 requests/día.
 
@@ -123,19 +149,7 @@ const ratelimit = new Ratelimit({
   analytics: true,
 });
 
-// Dentro de Deno.serve, antes de procesar el request:
-const authHeader = req.headers.get("Authorization");
-if (!authHeader) {
-  return jsonResponse({ error: "No autorizado" }, 401);
-}
-
-const token = authHeader.replace("Bearer ", "");
-const { data, error } = await supabaseAuth.auth.getClaims(token);
-if (error || !data?.claims?.sub) {
-  return jsonResponse({ error: "Token inválido" }, 401);
-}
-
-const userId = data.claims.sub;
+// Dentro de Deno.serve, después de verificar JWT:
 const { success } = await ratelimit.limit(userId);
 if (!success) {
   return jsonResponse({ error: "Demasiadas solicitudes" }, 429);
@@ -148,71 +162,15 @@ supabase secrets set UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
 supabase secrets set UPSTASH_REDIS_REST_TOKEN=AXxxxxxxxxxxxx
 ```
 
-#### Recomendación para Impostar
+### Protección combinada (Anonymous Auth + Upstash Redis)
 
-**Anonymous Auth + Upstash Redis** desde el lanzamiento. Las 3 capas de protección combinadas son:
+Las 3 capas de protección combinadas serían:
 
 1. **Supabase Auth nativo**: 30 anonymous sign-ins/hora por IP (automático)
 2. **JWT verification**: `getClaims()` bloquea requests sin sesión válida
 3. **Rate limiting persistente (Upstash)**: 10 req/min por usuario autenticado
 
 Upstash free tier (10,000 req/día) es más que suficiente para el volumen esperado de Impostar.
-
-#### 2.3 CORS headers
-
-Agregar manejo de CORS para requests desde web:
-
-```typescript
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-// Al inicio del handler:
-if (req.method === "OPTIONS") {
-  return new Response("ok", { headers: corsHeaders });
-}
-
-// En jsonResponse, merge corsHeaders con los headers existentes.
-```
-
----
-
-## 2. Cómo resuelve los pendientes de `docs/pending.md`
-
-### Pendiente 1: Protección contra abuso de la Edge Function `generate-words`
-
-> **Problema**: El anon key es público. Cualquiera puede llamar la Edge Function directamente, generando costos en Groq sin límite.
-
-**Resolución con este plan**:
-
-| Capa | Protección | Cómo |
-|------|-----------|------|
-| Anonymous Auth | Bloquea requests sin sesión válida | `signInAnonymously()` en el cliente + `getClaims()` en la función |
-| Rate limit de Supabase Auth | Limita creación de sesiones anónimas | 30 sign-ins por hora por IP (built-in de Supabase) |
-| Rate limiting por user ID | Limita requests por usuario autenticado | 10 req/min por usuario (Upstash Redis) |
-| CAPTCHA (opcional) | Bloquea bots que crean sesiones masivas | Cloudflare Turnstile en `signInAnonymously()` |
-
-**Resultado**: Un atacante ya no puede simplemente extraer el anon key y hacer requests ilimitados. Necesitaría:
-1. Crear una sesión anónima (limitado a 30/hora por IP)
-2. Cada sesión solo puede hacer 10 requests por minuto
-3. Costo máximo estimado por IP por hora: 30 usuarios × 10 req/min × 60 min = 18,000 requests — pero en la práctica el rate limit por usuario lo limita a ~600 req/hora por IP (30 sesiones × ~20 req antes de crear otra sesión)
-
-Con Upstash Redis el rate limiting es **persistente y compartido entre todas las instancias**, eliminando la posibilidad de evasión por cambio de isolate. Comparado con el estado actual (~5000 req/min sin límite = ~300,000 req/hora), es una reducción de ~99.8%.
-
-### Pendiente 2: Publishable keys no soportan JWT en Edge Functions
-
-> **Problema**: Las publishable keys no funcionan con la verificación JWT por defecto. Hay que deployar con `--no-verify-jwt` o implementar verificación custom.
-
-**Resolución con este plan**:
-
-Se implementa verificación manual con `getClaims()` dentro de la función, que es exactamente lo que la [documentación oficial recomienda](https://supabase.com/docs/guides/functions/auth) para publishable keys. Se deploya con `--no-verify-jwt` porque la verificación ahora vive dentro del código de la función, no en el gateway.
-
-Esto es **más seguro** que la verificación del gateway porque:
-- Permite inspeccionar claims específicos (ej: `is_anonymous`)
-- Permite aplicar lógica de autorización customizada
-- Permite extraer el `user.id` para rate limiting
-- Es compatible con las JWT Signing Keys asimétricas nuevas de Supabase
 
 ---
 
@@ -255,4 +213,3 @@ const maxRequests = isAnonymous ? 10 : 30; // Más generoso para usuarios verifi
 - [ ] Para usuarios existentes anónimos: `supabase.auth.linkIdentity({ provider: 'apple' })`
 - [ ] UI de onboarding/login
 - [ ] Manejar el caso de usuarios que rechazan el login (fallback a Anonymous Auth)
-
