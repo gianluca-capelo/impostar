@@ -76,9 +76,24 @@ Esto no significa que la función quede desprotegida — la verificación con `g
 
 ### Fase 2 — Rate limiting por usuario
 
+> **Nota importante**: Supabase **no tiene rate limiting nativo para Edge Functions**. Los rate limits nativos de la plataforma solo cubren endpoints de Auth (signup, OTP, token refresh, anonymous sign-ins, etc.), no funciones custom. Para rate limiting en Edge Functions, Supabase recomienda oficialmente usar **Upstash Redis**. Ref: [supabase.com/docs/guides/functions/examples/rate-limiting](https://supabase.com/docs/guides/functions/examples/rate-limiting)
+
+#### Rate limits nativos de Supabase Auth (ya incluidos, no requieren implementación)
+
+Estos se aplican automáticamente al usar Anonymous Auth:
+
+| Endpoint | Límite | Configurable |
+|----------|--------|-------------|
+| Anonymous sign-ins | 30/hora por IP | Sí (Dashboard > Auth > Rate Limits) |
+| Token refresh (`/auth/v1/token`) | 1,800/hora, bursts de 30 | Sí |
+| OTP (`/auth/v1/otp`) | 360/hora, 60s entre requests | Sí |
+| Verificación (`/auth/v1/verify`) | 360/hora, bursts de 30 | Sí |
+
+Todos los rate limits de Auth son configurables desde el dashboard en **Authentication > Rate Limits**.
+
 #### 2.1 Opción A: Rate limiting en memoria (simple, sin dependencias externas)
 
-Usar un `Map` en memoria dentro de la Edge Function. Limitación: se resetea al redeployar o si Supabase recicla la instancia. Suficiente como primera capa.
+Usar un `Map` en memoria dentro de la Edge Function. Limitación: se resetea al redeployar o si Supabase recicla la instancia. Suficiente como primera capa para el lanzamiento.
 
 ```typescript
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
@@ -98,30 +113,82 @@ function checkRateLimit(userId: string): boolean {
 }
 ```
 
-#### 2.2 Opción B: Rate limiting con Upstash Redis (persistente, recomendado para producción)
+#### 2.2 Opción B: Rate limiting con Upstash Redis (persistente, recomendado por Supabase para producción)
 
-Usar Upstash Redis (tiene free tier) con sliding window. Es el approach recomendado en los ejemplos oficiales de Supabase:
+Upstash Redis es la **única solución de rate limiting recomendada oficialmente** por Supabase para Edge Functions. Usa un cliente HTTP/REST ideal para entornos serverless. Free tier: 10,000 requests/día.
+
+Este es el ejemplo oficial del repositorio de Supabase ([source](https://github.com/supabase/supabase/tree/master/examples/edge-functions/supabase/functions/upstash-redis-ratelimit)):
 
 ```typescript
 import { Redis } from "https://deno.land/x/upstash_redis@v1.19.3/mod.ts";
 import { Ratelimit } from "https://cdn.skypack.dev/@upstash/ratelimit@0.4.4";
+import { createClient } from "npm:supabase-js@2";
 
-const redis = new Redis({
-  url: Deno.env.get("UPSTASH_REDIS_REST_URL")!,
-  token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")!,
+Deno.serve(async (req) => {
+  try {
+    // Crear cliente Supabase con el contexto Auth del usuario que llamó la función
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      }
+    );
+
+    // Obtener el usuario autenticado
+    const token = req.headers.get("Authorization").replace("Bearer ", "");
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser(token);
+    if (!user) throw new Error("no user");
+
+    // Configurar Upstash Redis
+    const redis = new Redis({
+      url: Deno.env.get("UPSTASH_REDIS_REST_URL")!,
+      token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")!,
+    });
+
+    // Sliding window: 2 requests cada 10 segundos por usuario
+    const ratelimit = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(2, "10 s"),
+      analytics: true,
+    });
+
+    // Identificar por user.id (también se puede usar IP o API key)
+    const identifier = user.id;
+    const { success } = await ratelimit.limit(identifier);
+
+    if (!success) {
+      throw new Error("limit exceeded");
+    }
+
+    return new Response(JSON.stringify({ success }), { status: 200 });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 200,
+    });
+  }
 });
-
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 req por minuto
-});
-
-// En el handler, después de verificar JWT:
-const { success } = await ratelimit.limit(userId);
-if (!success) {
-  return jsonResponse({ error: "Demasiadas solicitudes. Intenta en un momento." }, 429);
-}
 ```
+
+**Secrets necesarios para Upstash**:
+```bash
+supabase secrets set UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+supabase secrets set UPSTASH_REDIS_REST_TOKEN=AXxxxxxxxxxxxx
+```
+
+#### Recomendación para Impostar
+
+Para el lanzamiento, **Anonymous Auth + rate limiting en memoria (Opción A) es suficiente**. Las 3 capas de protección combinadas son:
+
+1. **Supabase Auth nativo**: 30 anonymous sign-ins/hora por IP (automático)
+2. **JWT verification**: `getClaims()` bloquea requests sin sesión válida
+3. **Rate limiting en memoria**: 10 req/min por usuario autenticado
+
+Si después se detecta abuso real, migrar a **Upstash Redis (Opción B)** para rate limiting persistente. El cambio es mínimo: reemplazar el `Map` por el cliente de Upstash.
 
 #### 2.3 CORS headers
 
