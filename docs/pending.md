@@ -11,20 +11,6 @@
 2. **Supabase Auth** — requerir login (anónimo o con email) para generar palabras
 3. **Rate limiting por device ID** — guardar conteo en la DB por dispositivo
 
-## Bug: AbortSignal no se pasa a supabase.functions.invoke()
-
-**Archivo**: `services/ai.ts:35-37`
-
-**Problema**: Se crea un `AbortController` con timeout de 30s, pero nunca se pasa `controller.signal` a `supabase.functions.invoke()`. La llamada a la Edge Function no es cancelable.
-
-**Fix**: Agregar `signal: controller.signal` al objeto de opciones:
-```ts
-const { data, error } = await supabase.functions.invoke("generate-words", {
-  body: { description },
-  signal: controller.signal,
-});
-```
-
 ## Bug: Test suites ai.test.ts y GameSetup.test.tsx fallan al importar Supabase
 
 **Archivos**: `__tests__/ai.test.ts`, `__tests__/GameSetup.test.tsx`

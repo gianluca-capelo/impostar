@@ -34,6 +34,7 @@ export async function generateWordsFromDescription(
   try {
     const { data, error } = await supabase.functions.invoke("generate-words", {
       body: { description },
+      signal: controller.signal,
     });
 
     if (error) {
