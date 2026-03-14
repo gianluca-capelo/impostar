@@ -27,26 +27,6 @@ describe("generateWordsFromDescription", () => {
     );
   });
 
-  it("should include purchase token header when provided", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ words: ["gato"] }),
-    });
-
-    await generateWordsFromDescription("animales", "token-123");
-    expect(mockFetch).toHaveBeenCalledWith(
-      `${API_BASE_URL}/api/generate-words`,
-      expect.objectContaining({
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Purchase-Token": "token-123",
-        },
-        body: JSON.stringify({ description: "animales" }),
-      })
-    );
-  });
-
   it("should throw user-friendly message when fetch is aborted by timeout", async () => {
     jest.useFakeTimers();
 
@@ -176,7 +156,7 @@ describe("generateWordsFromDescription", () => {
     controller.abort();
 
     await expect(
-      generateWordsFromDescription("animales", undefined, controller.signal)
+      generateWordsFromDescription("animales", controller.signal)
     ).rejects.toThrow();
 
     // fetch should NOT have been called since signal was already aborted
@@ -197,7 +177,7 @@ describe("generateWordsFromDescription", () => {
       });
     });
 
-    const promise = generateWordsFromDescription("animales", undefined, controller.signal);
+    const promise = generateWordsFromDescription("animales", controller.signal);
     controller.abort();
 
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });

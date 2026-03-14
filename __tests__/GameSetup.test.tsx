@@ -267,8 +267,8 @@ describe("GameSetupScreen", () => {
 
     let capturedSignal: AbortSignal | undefined;
     mockedAi.generateWordsFromDescription.mockImplementation(
-      (_desc, _token, signal) => {
-        capturedSignal = signal;
+      (_desc, signal) => {
+        capturedSignal = signal as AbortSignal | undefined;
         return new Promise(() => {}); // never resolves — simulates in-flight request
       }
     );

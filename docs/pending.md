@@ -11,19 +11,27 @@
 2. **Supabase Auth** — requerir login (anónimo o con email) para generar palabras
 3. **Rate limiting por device ID** — guardar conteo en la DB por dispositivo
 
-## Bug: Llamada a generateWordsFromDescription con argumentos incorrectos
-
-**Archivo**: `app/index.tsx:79`
-
-**Problema**: Se llama `generateWordsFromDescription(aiDescription, undefined, controller.signal)` con 3 argumentos, pero tras la migración a Supabase la función solo acepta 2: `(description, signal?)`. El `controller.signal` cae como tercer argumento y se ignora — el AbortSignal no se pasa, por lo que el timeout y la cancelación no funcionan.
-
-**Fix**: Cambiar la llamada a `generateWordsFromDescription(aiDescription, controller.signal)`
-
 ## Bug: AbortSignal no se pasa a supabase.functions.invoke()
 
-**Archivo**: `services/ai.ts`
+**Archivo**: `services/ai.ts:35-37`
 
 **Problema**: Se crea un `AbortController` con timeout de 30s, pero nunca se pasa `controller.signal` a `supabase.functions.invoke()`. La llamada a la Edge Function no es cancelable.
+
+**Fix**: Agregar `signal: controller.signal` al objeto de opciones:
+```ts
+const { data, error } = await supabase.functions.invoke("generate-words", {
+  body: { description },
+  signal: controller.signal,
+});
+```
+
+## Bug: Test suites ai.test.ts y GameSetup.test.tsx fallan al importar Supabase
+
+**Archivos**: `__tests__/ai.test.ts`, `__tests__/GameSetup.test.tsx`
+
+**Problema**: Ambas suites fallan antes de ejecutar tests porque importan `services/ai.ts` → `lib/supabase.ts`, que requiere `@react-native-async-storage/async-storage` (nativo, no mockeado en Jest) y las env vars `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (no definidas en el entorno de test).
+
+**Fix**: Agregar un mock de `lib/supabase.ts` en la configuración de Jest (ej: `__mocks__/lib/supabase.ts` o en `jest.setup.js`) y definir las env vars en `jest.config.js`.
 
 ## Publishable keys no soportan JWT en Edge Functions
 
