@@ -11,13 +11,9 @@
 2. **Supabase Auth** — requerir login (anónimo o con email) para generar palabras
 3. **Rate limiting por device ID** — guardar conteo en la DB por dispositivo
 
-## Bug: Test suites ai.test.ts y GameSetup.test.tsx fallan al importar Supabase
+## ~~Bug: Test suites ai.test.ts y GameSetup.test.tsx fallan al importar Supabase~~ (Resuelto)
 
-**Archivos**: `__tests__/ai.test.ts`, `__tests__/GameSetup.test.tsx`
-
-**Problema**: Ambas suites fallan antes de ejecutar tests porque importan `services/ai.ts` → `lib/supabase.ts`, que requiere `@react-native-async-storage/async-storage` (nativo, no mockeado en Jest) y las env vars `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (no definidas en el entorno de test).
-
-**Fix**: Agregar un mock de `lib/supabase.ts` en la configuración de Jest (ej: `__mocks__/lib/supabase.ts` o en `jest.setup.js`) y definir las env vars en `jest.config.js`.
+Resuelto: mocks globales de AsyncStorage y `lib/supabase` en `jest.setup.js`. Tests de `ai.test.ts` actualizados para mockear `supabase.functions.invoke` en vez de `global.fetch`.
 
 ## Publishable keys no soportan JWT en Edge Functions
 
