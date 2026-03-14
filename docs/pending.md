@@ -11,10 +11,6 @@
 2. **Supabase Auth** — requerir login (anónimo o con email) para generar palabras
 3. **Rate limiting por device ID** — guardar conteo en la DB por dispositivo
 
-## ~~Bug: Test suites ai.test.ts y GameSetup.test.tsx fallan al importar Supabase~~ (Resuelto)
-
-Resuelto: mocks globales de AsyncStorage y `lib/supabase` en `jest.setup.js`. Tests de `ai.test.ts` actualizados para mockear `supabase.functions.invoke` en vez de `global.fetch`.
-
 ## Publishable keys no soportan JWT en Edge Functions
 
 **Problema**: Las publishable keys (`sb_publishable_xxx`) no funcionan con la verificación JWT por defecto de las Edge Functions. Para producción hay que deployar con `--no-verify-jwt` o implementar verificación custom dentro de la función.
