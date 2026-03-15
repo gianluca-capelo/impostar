@@ -6,7 +6,7 @@ export interface SubscriptionState {
 }
 
 // Flip a true para probar features premium durante desarrollo
-const DEV_PREMIUM = false;
+const DEV_PREMIUM = true; // TODO: cambiar a false cuando se implemente react-native-iap
 
 /**
  * Stub hook for premium subscription status.
