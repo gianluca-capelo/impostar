@@ -18,6 +18,8 @@ export type WordCategory =
   | "personalizado"
   | "ia_generado";
 
+export type CategoryGroup = "general" | "argentina";
+
 export interface Player {
   id: number;
   name: string;
@@ -30,6 +32,7 @@ export interface GameState {
   numberOfImpostors: number;
   secretWord: string;
   category: WordCategory;
+  categoryGroup: CategoryGroup;
   phase: "setup" | "roles" | "complete";
   currentPlayerIndex: number;
 }

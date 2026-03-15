@@ -15,7 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useGame } from "../context/GameContext";
 import { useGameSetup } from "../hooks/useGameSetup";
 import { useSubscription } from "../hooks/useSubscription";
-import { WordCategory } from "../types/game";
+import { WordCategory, CategoryGroup } from "../types/game";
+import { getCategoriesForGroup } from "../utils/categories";
 import { validateGameSetup } from "../utils/validation";
 import { generateWordsFromDescription } from "../services/ai";
 import { GameTitle } from "../components/GameTitle";
@@ -44,6 +45,7 @@ export default function GameSetupScreen() {
   const { isPremium } = useSubscription();
 
   const [category, setCategory] = useState<WordCategory>("aleatorio");
+  const [categoryGroup, setCategoryGroup] = useState<CategoryGroup>("general");
   const [customWord, setCustomWord] = useState("");
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
@@ -55,6 +57,16 @@ export default function GameSetupScreen() {
   }, []);
   const [isStarting, setIsStarting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  const handleGroupChange = (group: CategoryGroup) => {
+    setCategoryGroup(group);
+    // Reset category to aleatorio if current category doesn't belong to the new group
+    const groupCategories = getCategoriesForGroup(group);
+    const categoryInGroup = groupCategories.some((c) => c.value === category);
+    if (!categoryInGroup) {
+      setCategory("aleatorio");
+    }
+  };
 
   const handleAiCardPress = () => {
     if (!isPremium) {
@@ -119,7 +131,7 @@ export default function GameSetupScreen() {
 
     try {
       setIsStarting(true);
-      await startGame(players, impostors, names, category, customWord);
+      await startGame(players, impostors, names, category, customWord, categoryGroup);
       router.push("/roles");
     } catch (err) {
       Alert.alert(
@@ -139,6 +151,7 @@ export default function GameSetupScreen() {
       await resetAllData();
       await clearSetup();
       setCategory("aleatorio");
+      setCategoryGroup("general");
       setCustomWord("");
       setAiDescription("");
     } finally {
@@ -216,6 +229,8 @@ export default function GameSetupScreen() {
               <CategoryPicker
                 selectedCategory={category}
                 onSelectCategory={setCategory}
+                selectedGroup={categoryGroup}
+                onSelectGroup={handleGroupChange}
               />
             )}
 

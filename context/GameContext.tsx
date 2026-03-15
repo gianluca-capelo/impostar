@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Alert } from "react-native";
-import { GameState, Player, WordCategory, WORD_LISTS } from "../types/game";
+import { GameState, Player, WordCategory, CategoryGroup, WORD_LISTS } from "../types/game";
+import { getPlayableCategoriesForGroup } from "../utils/categories";
 import {
   getAvailableWords,
   addUsedWord,
@@ -17,7 +18,8 @@ interface GameContextType {
     numberOfImpostors: number,
     playerNames: string[] | undefined,
     category: WordCategory,
-    customWord?: string
+    customWord?: string,
+    categoryGroup?: CategoryGroup
   ) => Promise<void>;
   nextPlayer: () => void;
   resetGame: () => void;
@@ -34,6 +36,7 @@ const initialGameState: GameState = {
   numberOfImpostors: 0,
   secretWord: "",
   category: "aleatorio",
+  categoryGroup: "general",
   phase: "setup",
   currentPlayerIndex: 0,
 };
@@ -76,8 +79,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return availableWords[Math.floor(Math.random() * availableWords.length)];
   };
 
-  const getRandomWordFromAllCategories = async (): Promise<{ word: string; sourceCategory: string }> => {
-    const categories: (keyof typeof WORD_LISTS)[] = ["comida", "películas", "lugares", "objetos"];
+  const getRandomWordFromAllCategories = async (group: CategoryGroup = "general"): Promise<{ word: string; sourceCategory: string }> => {
+    const categories = getPlayableCategoriesForGroup(group) as (keyof typeof WORD_LISTS)[];
 
     // Shuffle categories and try to find one with available words
     const shuffledCategories = [...categories].sort(() => Math.random() - 0.5);
@@ -111,7 +114,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    */
   const selectSecretWord = async (
     category: WordCategory,
-    customWord?: string
+    customWord?: string,
+    categoryGroup: CategoryGroup = "general"
   ): Promise<{ secretWord: string; categoryForHistory: string; noAiWordsAvailable?: boolean }> => {
     if (category === "personalizado") {
       return {
@@ -121,7 +125,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (category === "aleatorio") {
-      const result = await getRandomWordFromAllCategories();
+      const result = await getRandomWordFromAllCategories(categoryGroup);
       return {
         secretWord: result.word,
         categoryForHistory: result.sourceCategory,
@@ -199,12 +203,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     numberOfImpostors: number,
     playerNames: string[] | undefined,
     category: WordCategory,
-    customWord?: string
+    customWord?: string,
+    categoryGroup: CategoryGroup = "general"
   ): Promise<void> => {
     setSavedPlayerNames(playerNames);
 
     // Select secret word
-    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord);
+    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, customWord, categoryGroup);
 
     // Handle case when no AI words are available
     if (noAiWordsAvailable) {
@@ -212,9 +217,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         "Error",
         "No hay palabras generadas. Usando palabra aleatoria."
       );
-      const result = await getRandomWordFromAllCategories();
+      const result = await getRandomWordFromAllCategories(categoryGroup);
       const fallbackWord = result.word;
-      const fallbackCategory = result.sourceCategory;
+      const fallbackCategory = result.sourceCategory as WordCategory;
 
       // Add fallback word to history
       if (fallbackWord) {
@@ -229,6 +234,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         numberOfImpostors,
         secretWord: fallbackWord,
         category: fallbackCategory,
+        categoryGroup,
         phase: "roles",
         currentPlayerIndex: 0,
       });
@@ -249,6 +255,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       numberOfImpostors,
       secretWord,
       category,
+      categoryGroup,
       phase: "roles",
       currentPlayerIndex: 0,
     });
@@ -285,13 +292,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       players: [],
       secretWord: "",
       category: "aleatorio",
+      categoryGroup: "general",
       phase: "setup",
       currentPlayerIndex: 0,
     }));
   };
 
   const startNewRoundSameCategory = async (): Promise<void> => {
-    const { numberOfPlayers, numberOfImpostors, category, players: currentPlayers } = gameState;
+    const { numberOfPlayers, numberOfImpostors, category, categoryGroup, players: currentPlayers } = gameState;
 
     // Para categoría personalizado, redirigir a selección de categoría
     if (category === "personalizado") {
@@ -300,7 +308,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // Select secret word
-    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category);
+    const { secretWord, categoryForHistory, noAiWordsAvailable } = await selectSecretWord(category, undefined, categoryGroup);
 
     // Handle case when no AI words are available
     if (noAiWordsAvailable) {

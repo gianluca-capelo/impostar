@@ -7,23 +7,74 @@ import {
   FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { WordCategory } from "../types/game";
-import { CATEGORY_OPTIONS, CategoryOption } from "../utils/categories";
+import { WordCategory, CategoryGroup } from "../types/game";
+import { getCategoriesForGroup, CategoryOption, CATEGORY_OPTIONS } from "../utils/categories";
 
 interface CategoryPickerProps {
   selectedCategory: WordCategory;
   onSelectCategory: (category: WordCategory) => void;
+  selectedGroup: CategoryGroup;
+  onSelectGroup: (group: CategoryGroup) => void;
+}
+
+function GroupToggle({
+  selectedGroup,
+  onSelectGroup,
+}: {
+  selectedGroup: CategoryGroup;
+  onSelectGroup: (group: CategoryGroup) => void;
+}) {
+  return (
+    <View className="bg-border/30 rounded-xl p-1 flex-row">
+      <Pressable
+        onPress={() => onSelectGroup("general")}
+        className={`flex-1 rounded-lg py-2.5 items-center ${
+          selectedGroup === "general" ? "bg-accent/20" : ""
+        }`}
+      >
+        <Text
+          className={`text-sm ${
+            selectedGroup === "general"
+              ? "text-accent font-semibold"
+              : "text-secondary"
+          }`}
+        >
+          🌎 General
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => onSelectGroup("argentina")}
+        className={`flex-1 rounded-lg py-2.5 items-center ${
+          selectedGroup === "argentina" ? "bg-accent/20" : ""
+        }`}
+      >
+        <Text
+          className={`text-sm ${
+            selectedGroup === "argentina"
+              ? "text-accent font-semibold"
+              : "text-secondary"
+          }`}
+        >
+          🇦🇷 Argentina
+        </Text>
+      </Pressable>
+    </View>
+  );
 }
 
 export function CategoryPicker({
   selectedCategory,
   onSelectCategory,
+  selectedGroup,
+  onSelectGroup,
 }: CategoryPickerProps) {
   const [visible, setVisible] = useState(false);
 
   const selectedOption = CATEGORY_OPTIONS.find(
     (c) => c.value === selectedCategory
   );
+
+  const filteredCategories = getCategoriesForGroup(selectedGroup);
 
   const handleSelect = (category: WordCategory) => {
     onSelectCategory(category);
@@ -55,23 +106,28 @@ export function CategoryPicker({
   };
 
   return (
-    <View>
-      <Text className="text-base text-primary font-medium mb-2 flex-row items-center">
-        <Ionicons name="text-outline" size={16} color="#e2e8f0" />{" "}
-        Categoría de palabra secreta
-      </Text>
+    <View className="gap-3">
+      {/* Group toggle — always visible */}
+      <GroupToggle selectedGroup={selectedGroup} onSelectGroup={onSelectGroup} />
 
-      <Pressable
-        onPress={() => setVisible(true)}
-        className="bg-surface border border-border rounded-xl px-4 py-3.5 flex-row items-center justify-between"
-      >
-        <Text className="text-base text-primary">
-          {selectedOption
-            ? `${selectedOption.emoji}  ${selectedOption.label}`
-            : "Seleccioná una categoría"}
+      <View>
+        <Text className="text-base text-primary font-medium mb-2 flex-row items-center">
+          <Ionicons name="text-outline" size={16} color="#e2e8f0" />{" "}
+          Categoría de palabra secreta
         </Text>
-        <Ionicons name="chevron-down" size={20} color="#94a3b8" />
-      </Pressable>
+
+        <Pressable
+          onPress={() => setVisible(true)}
+          className="bg-surface border border-border rounded-xl px-4 py-3.5 flex-row items-center justify-between"
+        >
+          <Text className="text-base text-primary">
+            {selectedOption
+              ? `${selectedOption.emoji}  ${selectedOption.label}`
+              : "Seleccioná una categoría"}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+        </Pressable>
+      </View>
 
       <Modal
         visible={visible}
@@ -90,8 +146,14 @@ export function CategoryPicker({
           <Text className="text-lg font-bold text-primary text-center pb-3">
             Seleccionar categoría
           </Text>
+
+          {/* Group toggle inside modal */}
+          <View className="px-5 pb-3">
+            <GroupToggle selectedGroup={selectedGroup} onSelectGroup={onSelectGroup} />
+          </View>
+
           <FlatList
-            data={CATEGORY_OPTIONS}
+            data={filteredCategories}
             renderItem={renderItem}
             keyExtractor={(item) => item.value}
             ItemSeparatorComponent={() => (

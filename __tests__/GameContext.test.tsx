@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { GameProvider, useGame } from "../context/GameContext";
 import { WORD_LISTS } from "../types/game";
+import { getPlayableCategoriesForGroup } from "../utils/categories";
 import * as wordHistoryService from "../services/wordHistory";
 import * as aiWordsService from "../services/aiWords";
 
@@ -52,6 +53,7 @@ describe("GameContext", () => {
         numberOfImpostors: 0,
         secretWord: "",
         category: "aleatorio",
+        categoryGroup: "general",
         phase: "setup",
         currentPlayerIndex: 0,
       });
@@ -516,6 +518,83 @@ describe("GameContext", () => {
 
       // With 46 words in comida, 15 picks should give us at least 3 different ones
       expect(words.size).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("startGame - category group scoping", () => {
+    it("aleatorio con grupo 'general' selecciona de comida/películas/lugares/objetos", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "aleatorio", undefined, "general");
+      });
+
+      const word = result.current.gameState.secretWord;
+      const generalWords = [
+        ...WORD_LISTS.comida,
+        ...WORD_LISTS["películas"],
+        ...WORD_LISTS.lugares,
+        ...WORD_LISTS.objetos,
+      ];
+      expect(generalWords).toContain(word);
+    });
+
+    it("aleatorio con grupo 'argentina' selecciona de categorías argentinas", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "aleatorio", undefined, "argentina");
+      });
+
+      const word = result.current.gameState.secretWord;
+      const argentinaCategories = getPlayableCategoriesForGroup("argentina");
+      const argentinaWords = argentinaCategories.flatMap(
+        (cat) => WORD_LISTS[cat as keyof typeof WORD_LISTS] || []
+      );
+      expect(argentinaWords).toContain(word);
+    });
+
+    it("startNewRoundSameCategory con aleatorio respeta el categoryGroup guardado", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      // Start with argentina group
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "aleatorio", undefined, "argentina");
+      });
+
+      expect(result.current.gameState.categoryGroup).toBe("argentina");
+
+      // Start new round same category
+      await act(async () => {
+        await result.current.startNewRoundSameCategory();
+      });
+
+      const word = result.current.gameState.secretWord;
+      const argentinaCategories = getPlayableCategoriesForGroup("argentina");
+      const argentinaWords = argentinaCategories.flatMap(
+        (cat) => WORD_LISTS[cat as keyof typeof WORD_LISTS] || []
+      );
+      expect(argentinaWords).toContain(word);
+    });
+
+    it("gameState.categoryGroup se guarda correctamente al iniciar juego", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "comida", undefined, "argentina");
+      });
+
+      expect(result.current.gameState.categoryGroup).toBe("argentina");
+    });
+
+    it("default categoryGroup es 'general' si no se especifica", async () => {
+      const { result } = renderHook(() => useGame(), { wrapper });
+
+      await act(async () => {
+        await result.current.startGame(4, 1, undefined, "comida");
+      });
+
+      expect(result.current.gameState.categoryGroup).toBe("general");
     });
   });
 });
