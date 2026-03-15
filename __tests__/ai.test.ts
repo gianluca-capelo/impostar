@@ -1,48 +1,26 @@
 import { generateWordsFromDescription } from "../services/ai";
-import { API_BASE_URL } from "../config";
+import { supabase } from "../lib/supabase";
 
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Get the mocked invoke function (globally mocked in jest.setup.js)
+const mockInvoke = supabase.functions.invoke as jest.Mock;
 
 beforeEach(() => {
-  mockFetch.mockClear();
+  mockInvoke.mockClear();
 });
 
 describe("generateWordsFromDescription", () => {
   it("should return words on success", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ words: ["gato", "perro", "pájaro"] }),
+    mockInvoke.mockResolvedValue({
+      data: { words: ["gato", "perro", "pájaro"] },
+      error: null,
     });
 
     const words = await generateWordsFromDescription("animales domésticos");
     expect(words).toEqual(["gato", "perro", "pájaro"]);
-    expect(mockFetch).toHaveBeenCalledWith(
-      `${API_BASE_URL}/api/generate-words`,
+    expect(mockInvoke).toHaveBeenCalledWith(
+      "generate-words",
       expect.objectContaining({
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: "animales domésticos" }),
-      })
-    );
-  });
-
-  it("should include purchase token header when provided", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ words: ["gato"] }),
-    });
-
-    await generateWordsFromDescription("animales", "token-123");
-    expect(mockFetch).toHaveBeenCalledWith(
-      `${API_BASE_URL}/api/generate-words`,
-      expect.objectContaining({
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Purchase-Token": "token-123",
-        },
-        body: JSON.stringify({ description: "animales" }),
+        body: { description: "animales domésticos" },
       })
     );
   });
@@ -50,16 +28,17 @@ describe("generateWordsFromDescription", () => {
   it("should throw user-friendly message when fetch is aborted by timeout", async () => {
     jest.useFakeTimers();
 
-    // Simulate a hanging fetch that rejects when its signal is aborted
-    mockFetch.mockImplementation((_url: string, options: RequestInit) => {
-      return new Promise((_resolve, reject) => {
-        (options.signal as AbortSignal).addEventListener("abort", () => {
-          const err = new Error("Aborted");
-          err.name = "AbortError";
-          reject(err);
+    mockInvoke.mockImplementation(
+      (_name: string, options: { signal?: AbortSignal }) => {
+        return new Promise((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => {
+            const err = new Error("Aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
         });
-      });
-    });
+      }
+    );
 
     const promise = generateWordsFromDescription("animales");
     jest.advanceTimersByTime(30_001);
@@ -72,32 +51,17 @@ describe("generateWordsFromDescription", () => {
   });
 
   it("should throw user-friendly message for network errors", async () => {
-    mockFetch.mockRejectedValue(new TypeError("Failed to fetch"));
+    mockInvoke.mockRejectedValue(new TypeError("Failed to fetch"));
 
     await expect(
       generateWordsFromDescription("animales")
     ).rejects.toThrow("Sin conexión a internet. Verifica tu conexión.");
   });
 
-  it("should throw SUBSCRIPTION_REQUIRED for subscription errors", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      json: () =>
-        Promise.resolve({
-          error: "Subscription required",
-          code: "SUBSCRIPTION_REQUIRED",
-        }),
-    });
-
-    await expect(
-      generateWordsFromDescription("animales")
-    ).rejects.toThrow("SUBSCRIPTION_REQUIRED");
-  });
-
   it("should throw error message from API", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ error: "Rate limit exceeded" }),
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: "Rate limit exceeded" },
     });
 
     await expect(
@@ -105,32 +69,10 @@ describe("generateWordsFromDescription", () => {
     ).rejects.toThrow("Rate limit exceeded");
   });
 
-  it("should throw generic error when API error response is not JSON", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      json: () => Promise.reject(new Error("not json")),
-    });
-
-    await expect(
-      generateWordsFromDescription("animales")
-    ).rejects.toThrow("Error al generar palabras");
-  });
-
-  it("should throw when success response is not valid JSON", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.reject(new Error("not json")),
-    });
-
-    await expect(
-      generateWordsFromDescription("animales")
-    ).rejects.toThrow("Respuesta inválida del servidor");
-  });
-
   it("should throw generic error when API error has no message", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({}),
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: "" },
     });
 
     await expect(
@@ -139,9 +81,9 @@ describe("generateWordsFromDescription", () => {
   });
 
   it("should throw when words is null", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ words: null }),
+    mockInvoke.mockResolvedValue({
+      data: { words: null },
+      error: null,
     });
 
     await expect(
@@ -150,9 +92,9 @@ describe("generateWordsFromDescription", () => {
   });
 
   it("should throw when words is a string instead of array", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ words: "gato perro" }),
+    mockInvoke.mockResolvedValue({
+      data: { words: "gato perro" },
+      error: null,
     });
 
     await expect(
@@ -161,9 +103,9 @@ describe("generateWordsFromDescription", () => {
   });
 
   it("should throw when words field is missing", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({}),
+    mockInvoke.mockResolvedValue({
+      data: {},
+      error: null,
     });
 
     await expect(
@@ -176,18 +118,17 @@ describe("generateWordsFromDescription", () => {
     controller.abort();
 
     await expect(
-      generateWordsFromDescription("animales", undefined, controller.signal)
+      generateWordsFromDescription("animales", controller.signal)
     ).rejects.toThrow();
 
-    // fetch should NOT have been called since signal was already aborted
-    expect(mockFetch).not.toHaveBeenCalled();
+    // invoke should NOT have been called since signal was already aborted
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   it("should abort the fetch when the external signal fires mid-request", async () => {
     const controller = new AbortController();
 
-    // Simulate fetch that only resolves after we manually abort
-    mockFetch.mockImplementation(() => {
+    mockInvoke.mockImplementation(() => {
       return new Promise((_resolve, reject) => {
         controller.signal.addEventListener("abort", () => {
           const err = new Error("Aborted");
@@ -197,7 +138,7 @@ describe("generateWordsFromDescription", () => {
       });
     });
 
-    const promise = generateWordsFromDescription("animales", undefined, controller.signal);
+    const promise = generateWordsFromDescription("animales", controller.signal);
     controller.abort();
 
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });

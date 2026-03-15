@@ -76,7 +76,7 @@ export default function GameSetupScreen() {
 
     setIsGenerating(true);
     try {
-      const words = await generateWordsFromDescription(aiDescription, undefined, controller.signal);
+      const words = await generateWordsFromDescription(aiDescription, controller.signal);
       setAiGeneratedWords(words);
       Alert.alert("¡Listo!", `Se generaron ${words.length} palabras`);
     } catch (error) {
