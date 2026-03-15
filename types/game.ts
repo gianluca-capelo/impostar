@@ -31,6 +31,7 @@ export interface GameState {
   numberOfImpostors: number;
   secretWord: string;
   category: WordCategory;
+  resolvedCategory: WordCategory;
   categoryGroup: CategoryGroup;
   phase: "setup" | "roles" | "complete";
   currentPlayerIndex: number;

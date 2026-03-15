@@ -120,7 +120,7 @@ export default function RolesScreen() {
             <View className="flex-row justify-between items-center py-2">
               <Text className="text-secondary text-[15px]">Categoría</Text>
               <Text className="text-primary font-bold">
-                {getCategoryLabel(gameState.category)}
+                {getCategoryLabel(gameState.resolvedCategory)}
               </Text>
             </View>
           </View>
@@ -256,12 +256,19 @@ export default function RolesScreen() {
 
           {/* Role title */}
           <Text
-            className={`text-center text-4xl font-black mb-6 ${
+            className={`text-center text-4xl font-black mb-4 ${
               isImpostor ? "text-impostor" : "text-civil"
             }`}
           >
             {isImpostor ? "SOS IMPOSTOR" : "SOS CIVIL"}
           </Text>
+
+          {/* Category badge */}
+          <View className="bg-white/5 self-center rounded-full px-4 py-1.5 mb-4">
+            <Text className="text-secondary text-sm">
+              {getCategoryLabel(gameState.resolvedCategory)}
+            </Text>
+          </View>
 
           {/* Role content */}
           {isImpostor ? (

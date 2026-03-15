@@ -53,6 +53,7 @@ describe("GameContext", () => {
         numberOfImpostors: 0,
         secretWord: "",
         category: "aleatorio",
+        resolvedCategory: "aleatorio",
         categoryGroup: "general",
         phase: "setup",
         currentPlayerIndex: 0,

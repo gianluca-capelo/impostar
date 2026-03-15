@@ -37,6 +37,8 @@ let mockGameState = {
   numberOfImpostors: 1,
   secretWord: "Pizza",
   category: "comida" as const,
+  resolvedCategory: "comida" as const,
+  categoryGroup: "general" as const,
   phase: "roles" as const,
   currentPlayerIndex: 0,
 };
@@ -65,6 +67,8 @@ beforeEach(() => {
     numberOfImpostors: 1,
     secretWord: "Pizza",
     category: "comida" as const,
+    resolvedCategory: "comida" as const,
+    categoryGroup: "general" as const,
     phase: "roles" as const,
     currentPlayerIndex: 0,
   };
