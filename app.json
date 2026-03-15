@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.impostar.ios"
+      "bundleIdentifier": "com.broqui.impostar",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
