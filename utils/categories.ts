@@ -13,7 +13,6 @@ export const CATEGORY_OPTIONS: CategoryOption[] = [
   { value: "películas", label: "Películas", emoji: "\u{1F3AC}", group: "general" },
   { value: "lugares", label: "Lugares", emoji: "\u{1F4CD}", group: "general" },
   { value: "objetos", label: "Objetos", emoji: "\u{1F4E6}", group: "general" },
-  { value: "acotar_saga", label: "ACOTAR Saga", emoji: "\u{1F987}", group: "argentina" },
   { value: "lam_panelistas", label: "LAM Panelistas", emoji: "\u{1F4FA}", group: "argentina" },
   { value: "politicos_argentinos", label: "Políticos Argentinos", emoji: "\u{1F3DB}\u{FE0F}", group: "argentina" },
   { value: "conductores_streaming_argentinos", label: "Streamers Argentinos", emoji: "\u{1F399}\u{FE0F}", group: "argentina" },

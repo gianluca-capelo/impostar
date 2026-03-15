@@ -4,7 +4,6 @@ export type WordCategory =
   | "películas"
   | "lugares"
   | "objetos"
-  | "acotar_saga"
   | "lam_panelistas"
   | "politicos_argentinos"
   | "conductores_streaming_argentinos"
@@ -82,14 +81,6 @@ export const WORD_LISTS: Record<Exclude<WordCategory, "aleatorio" | "personaliza
     "Llavero", "Martillo", "Destornillador", "Linterna", "Rueda",
     "Ropa", "Zapato", "Calcetín", "Caja", "Reloj despertador",
     "Tablero", "Pincel", "Tijera", "Regla", "Imán"
-  ],
-  acotar_saga: [
-    "Feyre", "Rhysand", "Tamlin", "Lucien", "Mor", "Azriel", "Cassian",
-    "Amren", "Nesta", "Elain", "Suriel", "Jurian", "Hybern", "Ianthe",
-    "Tarquin", "Helion", "Beron", "Merrion", "Miryam", "Drakon",
-    "Prythian", "Velaris", "Corte Noche", "Corte Primavera",
-    "Corte Verano", "Corte Otoño", "Corte Invierno", "Corte Día",
-    "Illyria", "Sidra"
   ],
   lam_panelistas: [
     "Ángel de Brito",

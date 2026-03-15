@@ -28,7 +28,6 @@ describe("getCategoriesForGroup", () => {
     const values = categories.map((c) => c.value);
 
     // Should include argentine categories
-    expect(values).toContain("acotar_saga");
     expect(values).toContain("lam_panelistas");
     expect(values).toContain("politicos_argentinos");
     expect(values).toContain("conductores_streaming_argentinos");
@@ -44,8 +43,8 @@ describe("getCategoriesForGroup", () => {
     expect(values).toContain("aleatorio");
     expect(values).toContain("personalizado");
 
-    // Total: 11 argentina + 2 special = 13
-    expect(categories).toHaveLength(13);
+    // Total: 10 argentina + 2 special = 12
+    expect(categories).toHaveLength(12);
   });
 
   it("no incluye categorías del otro grupo", () => {
@@ -78,7 +77,6 @@ describe("getPlayableCategoriesForGroup", () => {
   it("argentina devuelve las 11 categorías argentinas", () => {
     const playable = getPlayableCategoriesForGroup("argentina");
 
-    expect(playable).toContain("acotar_saga");
     expect(playable).toContain("lam_panelistas");
     expect(playable).toContain("politicos_argentinos");
     expect(playable).toContain("conductores_streaming_argentinos");
@@ -89,7 +87,7 @@ describe("getPlayableCategoriesForGroup", () => {
     expect(playable).toContain("barrios_porteños");
     expect(playable).toContain("jugadores_argentinos_futbol");
     expect(playable).toContain("equipos_futbol_argentinos");
-    expect(playable).toHaveLength(11);
+    expect(playable).toHaveLength(10);
   });
 
   it("no incluye aleatorio, personalizado, ni ia_generado", () => {
